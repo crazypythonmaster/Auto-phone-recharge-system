@@ -1,0 +1,74 @@
+{% extends 'core/base.html' %}
+
+{% block content %}
+    <section class="content-header">
+        <h1>
+            Only for developers !!!
+        </h1>
+        <ol class="breadcrumb">
+            <li><a href="{% url 'home' %}"><i class="fa fa-dashboard"></i> Home</a></li>
+	        <li class='active'>Commands</li>
+        </ol>
+    </section>
+    {% if form.errors %}
+      {% for key, value in form.errors.items %}
+	 <div class="alert alert-danger alert-dismissable">
+           <button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>
+           {{key}}{{value}}
+         </div>
+      {% endfor %}
+    {% endif %}
+    {% if messages %}
+        {% for message in messages %}
+    	    <div class="alert
+	            {% if message.tags == 'INFO' %}alert-info {% elif message.tags == 'success' %} alert-success {% elif message.tags == 'error' %} alert-danger {% else %} alert-warning {% endif %}
+            alert-dismissable">
+	            <button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>
+	            {{ message }}
+	        </div>
+        {% endfor %}
+    {% endif %}
+    	<section class="content">
+    <form class="form-horizontal" role="form" method="post" action="." id="main">
+      {% csrf_token %}
+    {% if success %}
+        <input type="hidden" value="{{ success }}" id="id_success" name="success"/>
+        <input type="hidden" value="{{ cache_id }}" id="id_cache_id" name="cache_id"/>
+        <div class="form-group">
+        <label for="id_confirm" class="col-sm-2 control-label">confirm</label>
+        <div class="col-sm-4">
+            <input id="id_confirm" name="confirm" type="text" class="form-control"/>
+        </div>
+    </div>
+        {% else %}
+        <input type="hidden" value="{{ success }}" id="id_success" name="success"/>
+    <div class="form-group">
+        <label for="id_login" class="col-sm-2 control-label">login</label>
+        <div class="col-sm-4">
+            <input id="id_login" name="login" type="text" class="form-control"/>
+        </div>
+    </div>
+    <div class="form-group">
+        <label for="id_password" class="col-sm-2 control-label">password</label>
+        <div class="col-sm-4">
+            <input id="id_password" name="password" type="text" class="form-control"/>
+        </div>
+    </div>
+        {% endif %}
+        <div class="box-footer">
+        <div class="col-sm-offset-2">
+          <button type="submit" class="btn btn-primary">Send</button>
+          <a href="{% url 'home' %}" class="btn btn-default">Cancel</a>
+        </div>
+      </div>
+    </form>
+      </section>
+{% endblock %}
+{% block body_js %}
+    <script type="text/javascript">
+      $(document).ready(function() {
+	$('.tooltip-activate').tooltip();
+	$('#__confirm').addClass( "active" );
+      });
+    </script>
+{% endblock %}

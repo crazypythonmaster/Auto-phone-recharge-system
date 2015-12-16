@@ -1,0 +1,56 @@
+{% extends 'core/base.html' %}
+{% block add_css %}
+    <link href="{{ STATIC_URL }}css/datatables/dataTables.bootstrap.css" rel="stylesheet" type="text/css" />
+{% endblock %}
+{% block content %}
+    <section class="content-header">
+        <h1>Import Phone Numbers</h1>
+        <ol class="breadcrumb">
+            <li><a href=""><i class="fa fa-dashboard"></i> Home</a></li>
+            <li><a href="{% url 'customer_list' %}">Customers</a></li>
+	        <li class='active'>Import Phone Numbers</li>
+        </ol>
+    </section>
+    {% if form.errors %}
+        {% for key, value in form.errors.items %}
+            <div class="alert alert-danger alert-dismissable">
+               <button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>
+               {{key}}{{value}}
+            </div>
+        {% endfor %}
+    {% endif %}
+	<section class="content">
+	   <div class="box box-primary">
+			<div class="box-header">
+				<h3 class="box-title">Import</h3>
+			</div>
+			<div class="box-body">
+				<form class="form-horizontal" role="form" enctype="multipart/form-data" method="post" action=".">
+				  {% csrf_token %}
+				  	<input type="hidden" value="True" id="id_confirm" name="confirm"/>
+					<div class="form-group">
+				      	<label for="id_file" class="col-sm-2 control-label">Phone Numbers Import File</label>
+						<div class="col-sm-6">
+						  <input type="file" id="id_file" name="file" required/>
+						  <p class="help-block">Select the XLS or XLSX that contains a list of phone numbers .</p>
+						</div>
+				  	</div>
+				  	<div class="box-footer">
+						<div class="col-sm-offset-2">
+					  		<button type="submit" class="btn btn-primary">Import</button>
+					  		<a href="{% url 'customer_list' %}" class="btn btn-default">Cancel</a>
+						</div>
+				  	</div>
+			    </form>
+			</div>
+    	</div>
+    </section>
+{% endblock %}
+{% block body_js %}
+    <script type="text/javascript">
+      $(document).ready(function() {
+		$('.tooltip-activate').tooltip();
+		$('#__customers').addClass( "active" );
+      });
+    </script>
+{% endblock %}

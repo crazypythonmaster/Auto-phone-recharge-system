@@ -1,0 +1,18 @@
+.glyphicon-refresh-animate {
+    -animation: spin .7s infinite linear;
+    -webkit-animation: spin2 .7s infinite linear;
+}
+
+@-webkit-keyframes spin2 {
+    from { -webkit-transform: rotate(0deg);}
+    to { -webkit-transform: rotate(360deg);}
+}
+
+#schedule_monthly{
+    background-color: #b8d5ef;
+}
+
+
+#schedule_monthly_minus_one_day{
+    background-color: #64c4ef;
+}

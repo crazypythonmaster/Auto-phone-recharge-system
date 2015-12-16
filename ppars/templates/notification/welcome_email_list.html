@@ -1,0 +1,71 @@
+{% extends 'core/base.html' %}
+{% load tz %}
+{% block add_css %}
+	<link href="{{ STATIC_URL }}css/datatables/dataTables.bootstrap.css" rel="stylesheet" type="text/css" />
+{% endblock %}
+{% block content %}
+	<section class="content-header">
+		<h1>
+            <a class="btn btn-primary" href="{% url 'welcome_email_create' %}"><i class="fa fa-plus"></i>  Add Welcome Email</a>
+		</h1>
+		<ol class="breadcrumb">
+			<li><a href="{% url 'home' %}">Home</a></li>
+			<li class="active">Welcome Emails</li>
+		</ol>
+	</section>
+    {% if not user.profile.company.can_send_welcome_emails %}
+    <div class="alert alert-danger alert-dismissable">
+        <button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>
+        This option isn't available for your company. Welcome messages will not be send to your customers. To activate this feature contact us.
+    </div>
+    {% endif %}
+	{% if messages %}
+	{% for message in messages %}
+	<div class="alert {% if message.tags == 'INFO' %}alert-info {% elif message.tags == 'success' %} alert-success {% elif message.tags == 'error' %} alert-danger {% else %} alert-warning {% endif %} alert-dismissable">
+		<button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>
+		{{ message }}
+	</div>
+	{% endfor %}
+	{% endif %}
+	<section class="content">
+		<div class="box">
+			<div class="box-body">
+				<table class="table table" id="datatable">
+					<thead>
+                        <tr>
+                            <th nowrap>Enabled</th>
+                            <th nowrap>Category</th>
+                            <th>Body</th>
+                            <th></th>
+                            <th></th>
+                        </tr>
+					</thead>
+					<tbody>
+                        {% for email in welcome_emails %}
+                        <tr>
+                            <td>{% if email.enabled %}<span class="fa fa-check-circle text-success"></span>{% else %}<span class="fa fa-minus-circle text-danger"></span>{% endif %}</td>
+                            <td>{{ email.get_category_display }}</td>
+                            <td>{{ email.body }}</td>
+                            <td><a href="{% url 'welcome_email_edit' email.id %}">Edit</a></td>
+                            <td><a href="#" onclick="if(confirm('Are you sure you want to delete this welcome message?')){
+                                $.get('{% url 'welcome_message_delete' email.id %}', function(){
+                                location.reload();
+                                });
+                            }">Delete</a></td>
+                        </tr>
+                        {% endfor %}
+					</tbody>
+				</table>
+			</div>
+		</div>
+	</section>
+{% endblock %}
+{% block body_js %}
+	<script src="{{ STATIC_URL }}js/datatables/jquery.dataTables.js" type="text/javascript"></script>
+	<script src="{{ STATIC_URL }}js/datatables/dataTables.bootstrap.js" type="text/javascript"></script>
+    <script>
+        function deleteWelcomeEmail(){
+
+        }
+    </script>
+{% endblock %}

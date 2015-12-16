@@ -1,0 +1,70 @@
+{% extends 'core/base.html' %}
+{% load tz %}
+{% block content %}
+    <section class="content-header">
+        <h1>
+            Import Logs
+        </h1>
+        <ol class="breadcrumb">
+            <li><a href="{% url 'home' %}"><i class="fa fa-dashboard"></i>Home</a></li>
+	        <li class='active'>Customers</li>
+        </ol>
+    </section>
+    {% if form.errors %}
+      {% for key, value in form.errors.items %}
+	 <div class="alert alert-danger alert-dismissable">
+           <button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>
+           {{key}}{{value}}
+         </div>
+      {% endfor %}
+    {% endif %}
+    {% if messages %}
+        {% for message in messages %}
+    	    <div class="alert
+	            {% if message.tags == 'INFO' %}alert-info {% elif message.tags == 'success' %} alert-success {% elif message.tags == 'error' %} alert-danger {% else %} alert-warning {% endif %}
+            alert-dismissable">
+	            <button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>
+	            {{ message }}
+	        </div>
+        {% endfor %}
+    {% endif %}
+    <section class="content">
+		<div class="box">
+			<div class="box-body table-responsive">
+				<table class="table table-condensed import-log" id="datatable">
+	                <thead>
+	                    <tr>
+	                        <th>#</th>
+	                        <th >Import message</th>
+	                        <th>Created</th>
+	                    </tr>
+	                </thead>
+	                <tbody>
+	                {% for importlog in importlog_list %}
+	                    <tr>
+	                        <td>{{ forloop.counter }}</td>
+                            {% autoescape off %}
+                                <td>{{ importlog.message }}</td>
+                            {% endautoescape %}
+                            <td>{{ importlog.created|timezone:"US/Eastern"|date:"m/d/y H:i" }}</td>
+	                    </tr>
+                    {% empty %}
+                        <tr>
+	                        <td></td>
+                            <td>Never imort data before</td>
+                            <td></td>
+	                    </tr>
+	                {% endfor %}
+	                </tbody>
+	            </table>
+            </div>
+        </div>
+	</section>
+{% endblock %}
+{% block body_js %}
+	<script type="text/javascript">
+      $(document).ready(function() {
+	    $('#__customers').addClass( "active" );
+      });
+    </script>
+{% endblock %}

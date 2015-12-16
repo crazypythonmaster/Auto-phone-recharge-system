@@ -1,0 +1,97 @@
+{% extends 'core/base.html' %}
+
+{% block content %}
+<section class="content-header" xmlns="http://www.w3.org/1999/html" xmlns="http://www.w3.org/1999/html">
+        <h1>
+            Manage Users
+        </h1>
+        <ol class="breadcrumb">
+            <li><a href="{% url 'home' %}"><i class="fa fa-dashboard"></i> Home</a></li>
+	        <li class='active'>My Settings</li>
+        </ol>
+    </section>
+    {% if form.errors %}
+      {% for key, value in form.errors.items %}
+	 <div class="alert alert-danger alert-dismissable">
+           <button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>
+           {{key}}{{value}}
+         </div>
+      {% endfor %}
+    {% endif %}
+    	<section class="content">
+    <form class="form-horizontal user-form" role="form" method="post" action="." id="main">
+      {% csrf_token %}
+                <div class="form-group" id="div_login">
+					<label for="id_login" class="col-sm-2 control-label">Login</label>
+					<div class="col-sm-4">
+                        <div>{{ object.username }}</div>
+                        <input id="id_login"  type="hidden" name="login" class="form-control" value="{{ object.username }}"/>
+						<span class="help-block" id="help_login"></span>
+					</div>
+      			</div>
+                <div class="form-group" id="div_first_name">
+					<label for="id_first_name" class="col-sm-2 control-label">First Name</label>
+					<div class="col-sm-4">
+						<input id="id_first_name" name="first_name" type="text" class="form-control" value="{{form.first_name.value|default_if_none:"" }}"/>
+						<span class="help-block" id="help_first_name"></span>
+					</div>
+      			</div>
+                <div class="form-group" id="div_last_name">
+					<label for="id_last_name" class="col-sm-2 control-label">Last Name</label>
+					<div class="col-sm-4">
+						<input id="id_last_name" name="last_name" type="text" class="form-control" value="{{form.last_name.value|default_if_none:"" }}"/>
+						<span class="help-block" id="help_last_name"></span>
+					</div>
+      			</div>
+                <div class="form-group" id="div_email">
+					<label for="id_email" class="col-sm-2 control-label">E-Mail</label>
+					<div class="col-sm-4">
+						<input id="id_email" name="email" type="email" class="form-control" value="{{form.email.value|default_if_none:"" }}"/>
+						<span class="help-block" id="help_email"></span>
+					</div>
+      			</div>
+                <div class="form-group" id="div_update_email">
+					<label for="id_update_email" class="col-sm-2 control-label">News emails</label>
+					<div class="col-sm-4">
+						<input id="id_update_email" name="update_email" type="email" class="form-control" value="{{object.profile.updates_email|default_if_none:"" }}"/>
+						<span class="help-block" id="help_update_email">Enter here comma separated list of emails. We will send all news about updates of the system on this emails. Leave it blank if you don't want to receive an emails. </span>
+					</div>
+      			</div>
+        <div class="box-footer">
+					<div class="col-sm-offset-2">
+					  <button type="button" onclick="news_email_change()" class="btn btn-primary">Save</button>
+                     {% if object and object.id != user.id %}<a href="{% url 'user_delete' object.id %}" class="btn btn-danger">Delete</a>{% endif %}
+					  <a href="{% url 'user_list' %}" class="btn btn-default">Cancel</a>
+					</div>
+				  </div>
+    </form>
+
+      </section>
+{% endblock %}
+{% block body_js %}
+    <script type="text/javascript">
+        function news_email_change(){
+            $.ajax({
+                type : "GET",
+                url : "/change_user",
+                data: { news_email: $('#id_update_email').val() },
+                dataType: "json",
+                success: function(result) {
+                    if(result['valid']){
+                        $('.user-form').submit();
+                        $('#div_update_email').removeClass('has-error');
+                    }
+                    else{
+                        $('#div_update_email').addClass('has-error');
+                    }
+                }
+            });
+        }
+        $(document).ready(function () {
+            $('.tooltip-activate').tooltip();
+            $('#__settings ul').css('display', 'block');
+            $('#__settings').addClass( "active" );
+            $('#__user').addClass( "active" );
+        });
+    </script>
+{% endblock %}

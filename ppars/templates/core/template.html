@@ -1,0 +1,67 @@
+{% block html %}
+<!DOCTYPE html>
+{% endblock html %}
+<head>
+    {% block meta %}
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>{% block title %}{% endblock title %}</title>
+    <meta name="viewport" content="{% block meta_viewport %}width=device-width, initial-scale=1.0{% endblock meta_viewport %}">
+    <meta name="description" content="{% block meta_description %}{% endblock meta_description %}">
+    <link rel="shortcut icon" href="{{STATIC_URL}}/img/favicon.ico" type="image/ico">
+    {% endblock meta %}
+    {% block head_css %}
+    {% endblock head_css %}
+    {% block head_js %}
+    {% endblock head_js %}
+</head>
+<body id="{% block body_id %}{% endblock body_id %}" class="{% block body_class %}{% endblock body_class %}">
+    {% if user.is_authenticated %}
+        {% if user.is_superuser %}
+        <div class="alert alert-danger ie-danger" id="workers-error-alert" style="display: none; max-width: 90%; position: absolute; z-index: 100000">
+            <p>
+                <span id="workers-error-hide" class="glyphicon glyphicon-remove" aria-hidden="true" style="cursor: pointer"></span>
+                </br>
+                Server is suffering serious troubles with executing some tasks.
+                </br>
+                All refills might be in danger.
+                </br>
+                Please, contact development team <b>AS SOON AS POSSIBLE</b>!
+                </br>
+                Error: <b><i><span id="workers-error"></span></i></b>.
+            </p>
+        </div>
+        {% endif %}
+    {% endif %}
+    {% block body_content %}
+    <!--[if lte IE 8]>
+        <div class="alert alert-warning ie-warning">
+            <p>You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade your browser</a> to improve your experience.</p>
+        </div>
+    <![endif]-->
+    {% endblock body_content %}
+    {% if user.is_authenticated %}
+        {% if user.is_superuser %}
+        <script>
+            $(document).ready(function(){
+                $.ajax({
+                    method: 'GET',
+                    url: '/get_workers_status',
+                    dataType: 'json',
+                    success: function(response){
+                        if(!response['ok']){
+                            $('#workers-error-alert').show();
+                            $('#workers-error').text(response['ERROR']);
+                        }
+                    }
+                });
+                $('#workers-error-hide').on('click', function(){
+                    $('#workers-error-alert').hide();
+                });
+            });
+        </script>
+        {% endif %}
+    {% endif %}
+    {% block body_js %}
+    {% endblock body_js %}
+</body>

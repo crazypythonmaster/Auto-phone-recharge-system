@@ -1,0 +1,332 @@
+{% extends 'core/base.html' %}
+{% block add_css %}
+	<link href="{{ STATIC_URL }}css/datatables/dataTables.bootstrap.css" rel="stylesheet" type="text/css">
+    <link href="{{ STATIC_URL }}css/transaction-details.css" rel="stylesheet" type="text/css">
+{% endblock %}
+{% block content %}
+	<section class="content-header">
+		<h1>
+			Transaction Summary
+			<small>{{ transaction.id }}</small>
+            <button
+                    id="refreshData"
+                    class="btn btn-info btn-circle"
+                    data-loading-text="<span
+                                            class='glyphicon glyphicon-refresh glyphicon-refresh-animate'
+                                            aria-hidden='true'></span>"
+                    data-toggle="tooltip"
+                    data-placement="right"
+                    data-original-title="Refresh information about this task">
+                <span class="glyphicon glyphicon-refresh" aria-hidden="true"></span>
+            </button>
+		</h1>
+		<ol class="breadcrumb">
+			<li><a href="{% url 'home' %}">Home</a></li>
+			<li><a href="{% url 'transaction_list' %}">Transactions</a></li>
+			<li class='active'>{{ transaction.id }}</li>
+		</ol>
+	</section>
+	<section class="content">
+		{% if not user.is_superuser and transaction and transaction.company != user.profile.company %}
+			<div class="error-page">
+				<h2 class="headline text-info">403</h2>
+				<div class="error-content">
+					<h3><i class="fa fa-warning text-yellow"></i> Forbidden Resource.</h3>
+					<p>
+						You are not authorized to access this resource.
+						Meanwhile, you may <a href="{% url 'home' %}">return to dashboard</a>.
+					</p>
+				</div>
+			</div>
+		{% else %}
+        <input type="hidden" id="carrier_id" value="{{ transaction.autorefill.plan.carrier.id }}">
+		<div class="row">
+			<div class="col-lg-5">
+				<div class="box box-primary" id="details">
+                    <div class="overlay"></div>
+                    <div class="loading-img"></div>
+					<div class="box-header">
+						<i class="fa fa-text-width"></i>
+						<h3 class="box-title">Transaction Details</h3>
+					</div>
+					<div class="box-body">
+						<dl class="dl-horizontal">
+							<dt>Triggered by</dt>
+							<dd id="triggered_by">{{ transaction.triggered_by }}</dd>
+                            <dt>User</dt>
+							{% if user.is_superuser %}
+                                <dd><a href="/admin/auth/user/{{ object.user.id }}/">
+                                    {{ transaction.user.username }}</a>
+                                </dd>
+							{% else %}
+                                <dd>{{ transaction.user.username }}</dd>
+							{% endif %}
+                            <dt>Payment Type:</dt>
+                            <dd id="payment_type"></dd>
+                            <dt>Payment Gateway:</dt>
+                            <dd id="payment_gateway"></dd>
+							<dt>Customer</dt>
+							{% if transaction.customer.id %}
+							    <dd nowrap><a href="{% url 'customer_update' transaction.customer.id %}">{{ transaction.customer_str }}</a></dd>
+							{% else %}
+							    <dd nowrap>{{ transaction.customer_str }}</dd>
+							{% endif %}
+							{% if user.is_superuser and transaction.autorefill.trigger == 'SC' %}
+								<dt>Transaction Type</dt>
+								<dd>{% if transaction.autorefill  %}
+									<a href="/admin/core/autorefill/{{ transaction.autorefill.id }}/">
+										{{ transaction.autorefill.get_trigger_display }}</a>
+									{% else %}
+									    {{ transaction.trigger }}
+									{% endif %}
+								</dd>
+							{% else %}
+							<dt>Transaction Type</dt>
+								{% if transaction.autorefill %}
+									<dd>
+                                        {% if object.autorefill.trigger == 'MN' %}
+                                            {{ object.autorefill.get_trigger_display }}
+                                        <button id="schedule_monthly" type="button" class="btn btn-default btn-xs" style="color: white;">Schedule monthly</button>
+                                        <button id="schedule_monthly_minus_one_day" type="button" class="btn btn-default btn-xs" style="color: white; max-width: 192px; white-space: normal">Schedule monthly if this refill was done when plan was already expired or a new activation refill</button>
+                                        {% if verify_carrier %}
+                                        <button id="schedule_monthly_carrier" type="button" class="btn btn-instagram btn-xs" data-toggle="tooltip" data-placement="top" data-original-title="It only work for H20, PAGE PLUS CECULLAR, RED POCKET!">schedule monthly based
+                                            <br>on results of carrier</button>
+                                        {% else %}
+                                        <button type="button" class="btn btn-instagram btn-xs" onclick="alert('This option is not enabled for you. Please, contact support to enable it for you.')">Schedule monthly based
+                                            <br>on results of carrier</button>
+                                        {% endif %}
+                                        {% endif %}
+										{% if object.autorefill.trigger == 'SC' %}
+											<a href="{% url 'autorefill_update' object.autorefill.id %}">{{ object.autorefill.get_trigger_display }}</a>
+										{% endif %}
+									</dd>
+								{% else %}
+									<dd>{{ object.trigger }}</dd>
+								{% endif %}
+							{% endif %}
+							<dt>Phone Number</dt>
+							<dd id="phone_number"></dd>
+							<dt>Plan</dt>
+                            {% if user.is_superuser and transaction.autorefill %}
+							    <dd><a href="{% url 'plan_update' transaction.autorefill.plan.id %}">{{ transaction.autorefill.plan.plan_id }}</a></dd>
+                            {% else %}
+                                <dd  id="plan"></dd>
+                            {% endif %}
+							<dt>Refill Type</dt>
+							<dd id="refill_type"></dd>
+							<dt>Pre-Paid Pin</dt>
+							<dd>
+                                <div id="pin" class="inline"></div>
+                                <button
+                                        id="enterPinAndUpdate"
+                                        type="button"
+                                        class="btn btn-default btn-xs"
+                                        {% if object.autorefill.trigger != 'SC' %}
+                                            style="display: none !important;"
+                                        {% endif %}
+                                            >Enter pin and update next refill date</button>
+                                <div id="enterPinAndUpdate-div" class="input-group input-group-sm" style="display: none !important;">
+                                    <input id="enterPinAndUpdate-input" class="form-control" placeholder="Enter pin" type="text" data-toggle="tooltip" data-placement="left" title="Only number and not empty" />
+                                    <span class="input-group-btn">
+                                        <button type="button" class="btn btn-default" id="enterPinAndUpdate-commit">
+                                            <span class="glyphicon glyphicon-ok-circle text-success" aria-hidden="true"></span>
+                                        </button>
+                                    </span>
+                                    <span class="input-group-btn">
+                                        <button type="button" class="btn btn-default" id="enterPinAndUpdate-cancel">
+                                            <span class="glyphicon glyphicon-remove-circle text-danger" aria-hidden="true"></span>
+                                        </button>
+                                    </span>
+                                </div>
+                                {% if object.autorefill.trigger == 'MN' and object.autorefill.refill_type == 'GP' and not object.autorefill.need_buy_pins %}
+                                    {% if object.autorefill.send_bought_pins %}
+                                        <button
+                                            id="retrySendMessageWithPins"
+                                            class="btn btn-default btn-xs"
+                                            type="button"
+                                            style="background-color: #88dff1;">Retry send message with pins</button>
+                                    {% else %}
+                                        <button
+                                            id="SendMessageWithPins"
+                                            class="btn btn-default btn-xs"
+                                            type="button"
+                                            style="background-color: #62c5f1;">Send message with pins</button>
+                                    {% endif %}
+                                {% endif %}
+                            </dd>
+							<dt>State</dd>
+							<dd>
+                                <div id="state" class="inline"></div>
+                                <button id="restartPrerefill" type="button" class="btn btn-default btn-xs" style="background-color: #f1585a; display: none;" title="this will restart only the part of making a charge if it failed and taking a pin if it failed it will not do any refill the refill will run on the scheduled date of the scheduled refill linked to this transaction , if the customer needs to be refilled now then use restart full transaction.">Restart Prerefill</button>
+                                <button id="restartTrans" type="button" class="btn btn-default btn-xs" style="background-color: #f14f3c; color: white; display: none;" title="this will restart the transaction and start again where it failed, if cc was failed it will retry the charge and then get pin and reifll , if get pin was failed it will get pin and refill , if refill was failed it will try the refill  , please note if transaction is in intermediate step and customer still  has service then use restart prerefill button">Restart Full Transaction</button>
+                                <button id="closeTrans" type="button" class="btn btn-default btn-xs" style="background-color: #f13d4e; color: white; display: none;">Close Transaction</button>
+                                <button id="closeTransAndCrSim" type="button" class="btn btn-default btn-xs" style="background-color: #f17b79; color: #ffffff; display: none;">Close Transaction and create similar</button>
+                                <button id="CrSim" type="button" class="btn btn-default btn-xs" style="background-color: #f1aebf; display: none;">Create similar transaction</button>
+                            </dd>
+							<dt>Status</dd>
+							<dd>
+                                <div id="status" class="inline"></div><br>
+                                {% if object.get_child_transactions and object.status != 'N' %}
+                                    <div class="inline">Created new transaction</div><br>
+                                {% endif %}
+                                {% for child_transaction in object.get_child_transactions %}
+                                    <a href="{{ child_transaction.transaction_to.get_full_url }}" class="btn btn-info btn-xs">{{ child_transaction.transaction_to.id }}</a>
+                                {% endfor %}
+                            </dd>
+							<dt>Payment Status</dd>
+							<dd id="pstatus">
+                                <span id="pstatus-indicator" style="display: none !important;"></span>
+                                <button id="markPaid" type="button" class="btn btn-default btn-xs" style="background-color: #44f100; color: white; display: none !important;">Mark Paid</button>
+                                <button id="markRefund" type="button" class="btn btn-default btn-xs" style="background-color: #f18331; color: white; display: none !important;" data-toggle="tooltip" data-placement="right" data-original-title="This is only if you refund cash. If you want to refund the CC, please click on charge and refund">Mark Refund</button>
+                            </dd>
+                            <dt>Charges</dd>
+                            <dd>
+                                <div id="pustatus" class="inline"></div>
+                                {% comment %}
+                                <button
+                                        id="retryCharge"
+                                        type="button"
+                                        class="btn btn-default btn-xs"
+                                        style="background-color: #f1ab1f; color: white; display: none !important;"
+                                        >Retry Charge</button>
+                                <button
+                                        id="restartTransAndRetryCharge"
+                                        type="button"
+                                        class="btn btn-default btn-xs"
+                                        style="background-color: #f1db21; display: none !important;"
+                                        >Restart transaction and retry charge</button>
+                                 {% endcomment %}
+                            </dd>
+							{% if user.profile.profit_restriction %}
+                            <dt>Profit<dt>
+							<dd id="profit"></dd>
+                            {% endif %}
+							<dt>Transaction Status</dd>
+							<dd id="tstatus">
+                                <span id="tstatus-indicator" style="display: none !important;"></span>
+                                <button id="markCompleted" type="button" class="btn btn-default btn-xs" style="background-color: #f1811e; color: white; display: none !important;" title="this will mark the transaction as resolved this is used in case of any error where u manually refilled the customer or fixed the issue.">Mark Resolved</button>
+                                <button id="markCompletedWithPin" type="button" class="btn btn-default btn-xs" style="background-color: #f1a15a; color: white; display: none !important;" title="his will mark the transaction as resolved and update tha transaction pin with the pin you used this is used in case    of any error where u manually refilled the customer or fixed the issue ">Mark Resolved With Pin</button>
+                                <div id="pin-enter" class="input-group input-group-sm" style="display: none !important;">
+                                    <input id="pin-enter-input" class="form-control" placeholder="Enter pin" type="text" data-toggle="tooltip" data-placement="left" title="Only number and not empty" />
+                                    <span class="input-group-btn">
+                                        <button type="button" class="btn btn-default" id="pin-commit">
+                                            <span class="glyphicon glyphicon-ok-circle text-success" aria-hidden="true"></span>
+                                        </button>
+                                    </span>
+                                    <span class="input-group-btn">
+                                        <button type="button" class="btn btn-default" id="pin-cancel">
+                                            <span class="glyphicon glyphicon-remove-circle text-danger" aria-hidden="true"></span>
+                                        </button>
+                                    </span>
+                                </div>
+                            </dd>
+							<dt>Advanced Status</dd>
+							<dd id="adv_status"></dd>
+							<dt>Started At</dd>
+							<dd id="started"></dd>
+							<dt>Ended At</dd>
+							<dd id="ended"></dd>
+                            <dt id="exp_date_title">Expiration Date:</dt>
+							<dd id='exp_date'>
+                            {% if verify_carrier %}
+							<button id='get_exp_date' type='button' class='btn btn-github btn-xs'>
+                            Get results of Carrier</button><b id="link_result"></b>
+                            {% else %}
+							<button type="button" class='btn btn-github btn-xs' onclick="alert('This option is not enabled for you. Please, contact support to enable it for you.')">Get results of Carrier</button>
+							{% endif %}
+                            </dd>
+                            <dt>Transaction Note:</dt>
+                            <dd><textarea
+										  id="id_notes"
+										  name="notes"
+										  rows="4"
+										  class="form-control"
+										  data-toggle="tooltip"
+										  data-placement="auto"
+										  title="Enter any notes here." >{{ transaction.transaction_note|default_if_none:'' }}</textarea>
+                            <button type="button" id="save_notes" class='btn btn-github btn-xs'>Save Note</button>
+                            </dd>
+                        </dl>
+					</div>
+				</div>
+			</div>
+			<div class="col-lg-7">
+				<div class="box box-primary">
+                    <div class="overlay"></div>
+                    <div class="loading-img"></div>
+					<div class="box-header">
+						<h3 class="box-title">Transaction Steps</h3>
+					</div>
+                    <div class="box-body">
+                        <table class="table table-condensed no-wrap-td" id="steps"></table>
+                    </div>
+				</div>
+			</div>
+		</div>
+		{% endif %}
+    {% if transaction.customer %}
+    <div id="id_modal_cash" class="modal fade" role="dialog">
+        <div class="modal-dialog">
+        <!-- Modal content-->
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal">&times;</button>
+                    <h4 class="modal-title">Warning!</h4>
+                </div>
+            <div class="modal-body" id="modal-body">
+                <a href="{% url 'customer_update' transaction.customer.id %}">{{ transaction.customer_str }}</a>
+                is cash. Make sure to change as cash prepayment if needed!
+                <br>Should we create schedule refill?
+            </div>
+            <div class="modal-footer">
+                <button id="cancel_schedule_month" type="button" class="btn btn-danger" data-dismiss="modal">No</button>
+                <button id="confirm_schedule_month" type="button" class="btn btn-primary" data-dismiss="modal">Yes</button>
+                <button id="confirm_schedule_monthly_minus_one_day" type="button" class="btn btn-primary" data-dismiss="modal">Yes</button>
+            </div>
+            </div>
+        </div>
+    </div>
+    {%endif%}
+	</section>
+    <audio id="notif-sound" src="{{ STATIC_URL }}file/notification.mp3" hidden></audio>
+{% endblock %}
+{% block body_js %}
+	<script src="{{ STATIC_URL }}js/datatables/jquery.dataTables.min.js" type="text/javascript"></script>
+	<script src="{{ STATIC_URL }}js/datatables/dataTables.bootstrap.js" type="text/javascript"></script>
+    <script type="text/javascript">
+        g_data = {
+            id: '{{ object.id }}',
+            user: '{{ user.id }}',
+            company: '{{ user.profile.company.id }}',
+            state: '{{ object.state }}',
+            status: '{{ object.status }}',
+            paid: '{{ object.paid }}',
+            pin: '{{ object.pin }}'
+        };
+
+        links = {
+            ajaxTransaction: '{% url "ajax_transaction" object.id %}',
+            ajaxScheduleMonthly: '{% if object.autorefill.trigger == 'MN' %}{% url "ajax_schedule_monthly" object.autorefill.id %}{% endif %}',
+            ajaxMarkTransaction: '{% url "ajax_mark_transaction" object.id %}',
+            ajaxCheckManualTransactionEnded: '{% if object.autorefill.trigger == 'MN' %}{% url "ajax_check_manual_transaction_ended" object.autorefill.id %}{% endif %}',
+            ajaxGetExpDate: '{% url "ajax_verify_carrier" %}',
+            ajaxAddPinToUnused: '{% url "ajax_add_pin_to_unused" object.id %}',
+            ajaxSaveNote: '{% url "save_note_of_transaction" object.id %}',
+            createSimilarTransaction: function () {
+                return '{% url 'manualrefill' %}?' +
+                        'cid={{ object.autorefill.customer.id }}&' +
+                        'ph={{ object.autorefill.phone_number }}&' +
+                        'carid={{ object.autorefill.plan.carrier.id }}&' +
+                        'pid={{ object.autorefill.plan.id }}&' +
+                        'p={{ object.pin }}&' +
+                        'rftype={{ object.autorefill.refill_type }}&' +
+                        'crt_from={{ object.id }}&' +
+                        'paid=' + g_data.paid;
+            },
+            autorefill: '{% url "autorefill_update" 0 %}'
+        };
+
+        var payment_gateway_cash = {%if payment_gateway_cash %}true;{% else %}false;{%endif%}
+    </script>
+	<script src="{{ STATIC_URL }}js/transaction-detail.js?reload=1318923152" type="text/javascript"></script>
+{% endblock %}

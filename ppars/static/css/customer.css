@@ -1,0 +1,13 @@
+.numbers-list .popover-content{
+    max-height: 170px;
+    min-width: 290px;
+    overflow: auto;
+}
+
+.many-buttons-lines{
+    padding: 5px !important;
+}
+
+.no-wrap-td {
+    white-space: nowrap;
+}

@@ -1,0 +1,82 @@
+{% extends 'core/base.html' %}
+{% load tz %}
+{% block add_css %}
+{% endblock %}
+{% block content %}
+	<section class="content-header">
+		<ol class="breadcrumb">
+			<li><a href="{% url 'home' %}">Home</a></li>
+			<li class="active">Welcome Email Create</li>
+		</ol>
+	</section>
+    {% if not user.profile.company.can_send_welcome_emails %}
+    <div class="alert alert-danger alert-dismissable">
+        <button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>
+        This option isn't available for your company. Welcome messages will not be send to your customers. To activate this feature contact us.
+    </div>
+    {% endif %}
+	{% if messages %}
+	{% for message in messages %}
+	<div class="alert {% if message.tags == 'INFO' %}alert-info {% elif message.tags == 'success' %} alert-success {% elif message.tags == 'error' %} alert-danger {% else %} alert-warning {% endif %} alert-dismissable">
+		<button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>
+		{{ message }}
+	</div>
+	{% endfor %}
+	{% endif %}
+	<section class="content">
+		<div class="box">
+			<div class="box-header">
+				<h3 class="box-title">{% if welcome_email %} Edit Message: {% else %} Create Message: {% endif %}</h3>
+			</div>
+            <form class="form-horizontal" role="form" method="post" action=".">
+      			{% csrf_token %}
+                <div class="form-group" id="div_message">
+      				<label for="id_body" class="col-sm-2 control-label">Message</label>
+					<div class="col-sm-4">
+					  <textarea
+						id="id_body"
+						name="body"
+						rows="7"
+						class="form-control tooltip-activate"
+						required
+						data-toggle="tooltip"
+						data-placement="auto"
+						title="Enter a message" >{{ form.body.value|default_if_none:"" }}</textarea>
+					  <span class="help-block" id="help_message"></span>
+					</div>
+				</div>
+				<div class="form-group {% if form.category.errors %}has-error{% endif %}">
+					<label for="id_category" class="col-sm-2 control-label">Customer type</label>
+					<div class="col-sm-4">
+				  		<select class="form-control" id="id_category" name="category">
+							{% for value, text in form.category.field.choices %}
+						  		<option value="{{ value }}" {% if value == form.category.value %} selected="selected"{% endif %} >{{ text }}</option>
+							{% endfor %}
+					  	</select>
+	  				    <span class="help-block">{{ form.category.errors }}</span>
+					</div>
+				</div>
+                <div class="form-group">
+                    <div class="col-sm-offset-2 col-sm-5">
+                        <div class="checkbox">
+                            <label>
+                                <input id="id_enabled" name="enabled" type="checkbox" {% if form.enabled.value %}checked{% endif %}> Enabled
+                            </label>
+                            <span data-toggle="tooltip" data-placement="top" data-original-title="This message will be used to welcome selected customers. Other messages of this type will be disabled.">
+                                <span class="glyphicon glyphicon-info-sign"></span>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                <div class="box-footer">
+                    <div class="col-sm-offset-2">
+                        <button type="submit" class="btn btn-primary">Add</button>
+                        <a href="{% url 'welcome_email' %}" class="btn btn-default">Cancel</a>
+                    </div>
+                </div>
+			</form>
+		</div>
+	</section>
+{% endblock %}
+{% block body_js %}
+{% endblock %}

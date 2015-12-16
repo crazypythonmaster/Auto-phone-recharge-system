@@ -1,0 +1,313 @@
+{% extends 'core/base.html' %}
+{% load tz %}
+{% block add_css %}
+    <link href="{{ STATIC_URL }}css/datatables/dataTables.bootstrap.css" rel="stylesheet" type="text/css"/>
+    <link href="{{ STATIC_URL }}css/selectize.bootstrap3.css" rel="stylesheet" type="text/css">
+    <!-- There is a css class that we need, no need to make a new css file for now -->
+    <link href="{{ STATIC_URL }}css/customer.css" rel="stylesheet" type="text/css" />
+{% endblock %}
+{% block content %}
+    <section class="content-header">
+        <h1>
+            Charges
+            <small>Browse through all customers payments</small>
+        </h1>
+        <ol class="breadcrumb">
+            <li><a href="{% url 'home' %}">Home</a></li>
+            <li class="active">Credit Card Charges</li>
+        </ol>
+    </section>
+    {% if messages %}
+        {% for message in messages %}
+        <div class="alert {% if message.tags == 'INFO' %}alert-info {% elif message.tags == 'success' %} alert-success {% elif message.tags == 'error' %} alert-danger {% else %} alert-warning {% endif %} alert-dismissable">
+            <button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>
+            {{ message }}
+        </div>
+        {% endfor %}
+    {% endif %}
+    <section class="content">
+        <nav class="navbar navbar-default">
+            <h3>Create new charge</h3>
+            <form class="form-inline" >
+                {% csrf_token %}
+                <div class="form-group">
+                    <label for="id_customer" class="sr-only control-label" >Customer</label>
+                    <div class="input-group" style="width:200px !important;">
+                        <select id="id_customer" name="customer" required autofocus placeholder="Customer">
+                            <option></option>
+                            {% for customer in customers %}
+                            <option value="{{ customer.id }}" >{{ customer }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="sr-only" for="id_amount">Amount</label>
+                    <div class="input-group">
+                        <div class="input-group-addon">$</div>
+                        <input id="id_amount" name="amount" type="text" class="form-control" placeholder="Amount"/>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <div class="checkbox">
+                        <label><input id='id_like_cash' name="like_cash" type="checkbox"> Charge like cash</label>
+                    </div>
+                </div>
+                <button type="button" class="btn btn-success" onclick="createCharge();">Create</button>
+            </form>
+            <button type="button" style="width:100px; height: 35px; font-size: 12px;" class="btn btn-info btn-lg" onclick="$('#id_note').show(); $(this).hide()" >Add Notes</button>
+            <textarea style="display: none; resize: none;" id="id_note"></textarea>
+            <span class="text-danger" id="amount_error"></span>
+            <br/>
+        </nav>
+		<div class="box">
+        <div class="box-body table-responsive">
+            <input type="hidden" value="{{user.is_superuser}}" id="superuser"/>
+            <input type="hidden" value="{{user.profile.company.use_usaepay_2}}" id="use_usaepay_2"/>
+            <table class="table table-condensed" id="charges_table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Customer</th>
+                        <th>Phone Number</th>
+                        <th>Credit Card</th>
+                        <th>Amount</th>
+                        <th>Payment Gateway</th>
+                        <th>Status</th>
+                        <th>Used</th>
+                        <th>Used For</th>
+                        <th>Created</th>
+                    </tr>
+                </thead>
+                <tfoot>
+                    <tr>
+                        <th></th>
+                        <th></th>
+                        <th></th>
+                        <th></th>
+                        <th></th>
+                        <th>
+                            <select class="form-control" id="gateway-filter">
+                                <option value="">All</option>
+                                <option value="A">Authorize</option>
+                                <option value="U">USAePay</option>
+                                <option value="U2">USAePay[2]</option>
+                                <option value="RF">RedFinNetwork</option>
+                                <option value="DP">Dollarphone</option>
+                                <option value="CP">Cash (Payment)</option>
+                                <option value="CA">Cash</option>
+                            </select>
+                        </th>
+                        <th>
+                            <select class="form-control" id="status-filter">
+                                <option value="">All</option>
+                                <option value="S">Success</option>
+                                <option value="E">Error</option>
+                                <option value="R">Refund</option>
+                                <option value="V">Void</option>
+                            </select>
+                        </th>
+                        <th>
+                            <select class="form-control" id="used-filter">
+                                <option value="">All</option>
+                                <option value="False">False</option>
+                                <option value="True">True</option>
+                            </select>
+                        </th>
+                        <th></th>
+                        <th></th>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+      </div>
+    </section>
+{% endblock %}
+{% block body_js %}
+<script src="{{ STATIC_URL }}js/datatables/jquery.dataTables.js" type="text/javascript"></script>
+<script src="{{ STATIC_URL }}js/datatables/dataTables.bootstrap.js" type="text/javascript"></script>
+<script src="{{ STATIC_URL }}js/fnGetColumnData.js" type="text/javascript"></script>
+<script src="{{ STATIC_URL }}js/selectize.js" type="text/javascript"></script>
+<script type="text/javascript">
+    function getUrlParameter(sParam) {
+        var sPageURL = window.location.search.substring(1);
+        var sURLVariables = sPageURL.split('&');
+        for (var i = 0; i < sURLVariables.length; i++)
+        {
+            var sParameterName = sURLVariables[i].split('=');
+            if (sParameterName[0] == sParam)
+            {
+                return sParameterName[1];
+            }
+        }
+    }
+    $(document).ready(function () {
+        $('.popovers-activate').popover();
+        $('#__cccharges').addClass("active");
+        var customers = $('#id_customer').selectize({
+              sortField: 'text'
+        });
+        var customers_select = customers[0].selectize;
+        customers_select.setValue(getUrlParameter('cid'));
+        var charges_table = $('#charges_table').dataTable({
+            "bServerSide": true,
+            "sAjaxSource": '/ajax_charges_list',
+            "bProcessing": true,
+            "bLengthChange": true,
+            "bFilter": true,
+            "bInfo": true,
+            "bAutoWidth": false,
+            "aaSorting": [[ 9, "desc" ]],
+            "aoColumnDefs": [
+                {
+                    // The `data` parameter refers to the data for the cell (defined by the
+                    // `data` option, which defaults to the column being worked with, in
+                    // this case `data: 0`.
+                    "mRender": function ( data, type, row ) {
+                        if (data)
+                            row.status_display = '<span class="fa fa-check-circle text-success"></span>';
+                        else
+                            row.status_display = '<span class="fa fa-minus-circle text-danger"></span>';
+                        row.status_filter = data;
+                        if (type === 'display') {
+                            return row.status_display;
+                        }
+                        else if (type === 'filter') {
+                            return row.status_filter;
+                        }
+                          // 'sort', 'type' and undefined all just use the integer
+                        return row.status_filter;
+                    },
+                    "aTargets": [7]
+                },
+                {
+                    // The `data` parameter refers to the data for the cell (defined by the
+                    // `data` option, which defaults to the column being worked with, in
+                    // this case `data: 0`.
+                    "mRender": function ( data, type, row ) {
+                        switch(data) {
+                            case 'A':
+                                row.status_display = 'AUTHORIZE';
+                                break;
+                            case 'U':
+                                row.status_display = 'USAEPAY';
+                                break;
+                            case 'U2':
+                                row.status_display = 'USAEPAY[2]';
+                                break;
+                            case 'RF':
+                                row.status_display = 'RedFinNetwork';
+                                break;
+                            case 'DP':
+                                row.status_display = 'DOLLARPHONE';
+                                break;
+                            case 'CP':
+                                row.status_display = 'CASH (PREPAYMENT)';
+                                break;
+                            case 'CA':
+                                row.status_display = 'CASH';
+                                break;
+                        }
+                        return row.status_display;
+                    },
+                    "aTargets": [5]
+                },
+                {
+                    // The `data` parameter refers to the data for the cell (defined by the
+                    // `data` option, which defaults to the column being worked with, in
+                    // this case `data: 0`.
+                    "mRender": function ( data, type, row ) {
+                        switch(data) {
+                            case 'S':
+                                row.status_display = 'Success';
+                                break;
+                            case 'E':
+                                row.status_display = 'Error';
+                                break;
+                            case 'R':
+                                row.status_display = 'Refund';
+                                break;
+                            case 'V':
+                                row.status_display = 'Void';
+                                break;
+                        }
+                        return row.status_display;
+                    },
+                    "aTargets": [6]
+                },
+                {
+                    "aTargets": [0, 2, 3, 4, 5, 6, 7, 8],
+                    "bSortable": false
+                },
+                {
+                    "sClass": "no-wrap-td",
+                    "aTargets": [1, 2, 3, 4, 5, 6, 7, 8, 9]
+                }
+
+            ]
+        });
+        $('#gateway-filter', this).change(function () {
+            charges_table.fnFilter($(this).val(), 5);
+        });
+        $('#status-filter', this).change(function () {
+            charges_table.fnFilter($(this).val(), 6);
+        });
+        $('#used-filter', this).change(function () {
+            charges_table.fnFilter($(this).val(), 7);
+        });
+        if($('#use_usaepay_2').val() == 'False'){
+            $("#gateway-filter option[value=U2]").hide();
+        }
+
+    });
+    function getCookie(name) {
+        var cookieValue = null;
+        if (document.cookie && document.cookie != '') {
+            var cookies = document.cookie.split(';');
+            for (var i = 0; i < cookies.length; i++) {
+                var cookie = jQuery.trim(cookies[i]);
+                // Does this cookie string begin with the name we want?
+                if (cookie.substring(0, name.length + 1) == (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+    function csrfSafeMethod(method) {
+        // these HTTP methods do not require CSRF protection
+        return (/^(GET|HEAD|OPTIONS|TRACE)$/.test(method));
+    }
+    function createCharge() {
+        var csrftoken = getCookie('csrftoken');
+        var customer_id = $('#id_customer').val();
+        var amount = $('#id_amount').val();
+        var note = $('#id_note').val();
+        var like_cash = $('#id_like_cash').is(':checked');
+        if (!jQuery.isNumeric(amount) || !isNumber(amount) || Number(amount) < 0) {
+            $('#amount_error').html('<p>Amount must be positive numeric</p>')
+        }
+        else {
+            $.ajaxSetup({
+                beforeSend: function (xhr, settings) {
+                    if (!csrfSafeMethod(settings.type) && !this.crossDomain) {
+                        xhr.setRequestHeader("X-CSRFToken", csrftoken);
+                    }
+                }
+            });
+            $.ajax({
+                type: "POST",
+                url: 'ajax/charge-create/',
+                data: {customer_id: customer_id, amount: amount, like_cash: like_cash, note: note},
+                success: function (data) {
+                    window.location.href = 'charge/' + data['charge'] + '/';
+                }
+            });
+        }
+    }
+    function isNumber(n) {
+        return parseFloat(n) && isFinite(n);
+    }
+</script>
+{% endblock %}

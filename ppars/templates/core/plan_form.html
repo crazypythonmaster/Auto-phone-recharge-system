@@ -1,0 +1,190 @@
+{% extends 'core/base.html' %}
+{% block content %}
+    <section class="content-header">
+        <h1>
+            Manage Carriers
+            <small></small>
+        </h1>
+        <ol class="breadcrumb">
+            <li><a href="{% url 'home' %}">Home</a></li>
+            <li><a href="{% url 'plan_list' %}">Plan</a></li>
+            <li class='active'>{% if plan %} {{ plan }} {% else %} New {% endif %}</li>
+        </ol>
+    </section>
+    {% if form.errors %}
+        {% for key, value in form.errors.items %}
+            <div class="alert alert-danger alert-dismissable">
+                <button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>
+                {{ key }}{{ value }}
+            </div>
+        {% endfor %}
+    {% endif %}
+    <section class="content">
+        {% if not user.is_superuser %}
+            <div class="error-page">
+                <h2 class="headline text-info">403</h2>
+                <div class="error-content">
+                    <h3><i class="fa fa-warning text-yellow"></i> Forbidden Resource.</h3>
+                    <p>
+                        You are not authorized to access this resource.
+                        Meanwhile, you may <a href="{% url 'home' %}">return to dashboard</a>.
+                    </p>
+                </div>
+                <!-- /.error-content -->
+            </div><!-- /.error-page -->
+        {% else %}
+            <div class="box box-primary">
+                <div class="box-header">
+                    <h3 class="box-title">{% if plan %} Edit Plan: {{ plan }} {% else %} Add New Plan{% endif %}</h3>
+                </div>
+                <div class="box-body">
+                    <form class="form-horizontal" role="form" method="post" action=".">
+                        {% csrf_token %}
+                        <div class="form-group">
+                            <label for="id_sc_sku" class="col-sm-2 control-label">SKU SC</label>
+                            <div class="col-sm-4">
+                                <input id="id_sc_sku" name="sc_sku" type="text" class="form-control"
+                                       value="{{ form.sc_sku.value|default_if_none:"" }}" autofocus/>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="id_plan_id" class="col-sm-2 control-label">Plan ID</label>
+                            <div class="col-sm-4">
+                                <input id="id_plan_id" name="plan_id" type="text" class="form-control"
+                                       value="{{ form.plan_id.value|default_if_none:"" }}" required autofocus/>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="id_api_id" class="col-sm-2 control-label">API ID</label>
+                            <div class="col-sm-4">
+                                <input id="id_api_id" name="api_id" type="text" class="form-control"
+                                       value="{{ form.api_id.value|default_if_none:"" }}"/>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="id_carrier" class="col-sm-2 control-label">Carrier</label>
+                            <div class="col-sm-4">
+                                <select class="form-control" id="id_carrier" name="carrier" required>
+                                    {% for value, text in form.carrier.field.choices %}
+                                        <option value="{{ value }}" {% if value == form.carrier.value %}
+                                                selected="selected"{% endif %}>{{ text }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="id_plan_name" class="col-sm-2 control-label">Plan Name</label>
+                            <div class="col-sm-4">
+                                <input id="id_plan_name" name="plan_name" type="text" class="form-control"
+                                       value="{{ form.plan_name.value|default_if_none:"" }}" required/>
+                                <span class="help-block" id="help_plan_name">Using for get pin operations</span>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="id_rate_plan" class="col-sm-2 control-label">Rate Plan</label>
+                            <div class="col-sm-4">
+                                <input id="id_rate_plan" name="rate_plan" type="text" class="form-control"
+                                       value="{{ form.rate_plan.value|default_if_none:"" }}"/>
+                                <span class="help-block" id="help_rate_plan">Using for verify carriers. (Page Plus, AirVoice, ApprovedLink)</span>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="id_plan_cost" class="col-sm-2 control-label">Plan Cost</label>
+                            <div class="col-sm-2"><div class="input-group">
+                                <div class="input-group-addon">$</div>
+                                    <input id="id_plan_cost" name="plan_cost" type="text" class="form-control" required
+                                           value="{{ form.plan_cost.value|default_if_none:"" }}"
+                                           placeholder="dollarphone cost"/>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="id_plan_type" class="col-sm-2 control-label">Plan Type</label>
+                            <div class="col-sm-2">
+                                <select class="form-control" id="id_plan_type" name="plan_type" required>
+                                    {% for value, text in form.plan_type.field.choices %}
+                                        <option value="{{ value }}" {% if value == form.plan_type.value %}
+                                                selected="selected"{% endif %} >{{ text }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <div class="col-sm-offset-2 col-sm-5">
+                                <div class="checkbox">
+                                    <label>
+                                        <input type="checkbox" id="id_available" name="available"
+                                               {% if form.available.value %}checked{% endif %}> Available
+                                    </label>
+                                </div>
+                                <span class="help-block" id="help_available">Uncheck this option if the package is no longer used.</span>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <div class="col-sm-offset-2 col-sm-5">
+                                <div class="checkbox">
+                                    <label>
+                                        <input type="checkbox" id="id_universal" name="universal"
+                                               {% if form.universal.value %}checked{% endif %}> Universal
+                                    </label>
+                                </div>
+                                <span class="help-block" id="help_universal">Check this option if you want to create universal pocket.</span>
+                            </div>
+                        </div>
+                        <div id="universal_plan_hide" {% if form.universal.value %} style="display: none;" {% endif %}>
+                            <div class="form-group">
+                                <label for="id_universal_plan" class="col-sm-2 control-label">Universal Plan</label>
+                                <div class="col-sm-4">
+                                    <select class="form-control" id="id_universal_plan" name="universal_plan">
+                                        <option value='' selected="selected">---------</option>
+                                        {% for plan in up %}
+                                            <option value="{{ plan.pk }}" {% if plan.id == form.universal_plan.value %}
+                                                    selected="selected"{% endif %}>{{ plan }}</option>
+                                        {% endfor %}
+                                    </select>
+                                    <span class="help-block" id="help_universal_plan">Select the plan which will be used on failure current plan.
+                                        Leave blank if you are creating a universal plan.</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <div class="col-sm-offset-2 col-sm-5">
+                                <div class="checkbox">
+                                    <label>
+                                        <input type="checkbox" id="id_enabled" name="enabled"
+                                               {% if form.enabled.value %}checked{% endif %}>Enabled
+                                    </label>
+                                </div>
+                                <span class="help-block" id="help_enabled">Check this option if you want to show this plan for stores.</span>
+                            </div>
+                        </div>
+
+                        <div class="box-footer">
+                            <div class="col-sm-offset-2">
+                                <button type="submit" class="btn btn-primary">Save</button>
+                                {% if plan and can_deleted %}
+                                    <a href="{% url 'plan_delete' plan.id %}"
+                                       class="btn btn-danger">Delete</a>{% endif %}
+                                <a href="{% url 'plan_list' %}" class="btn btn-default">Cancel</a>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        {% endif %}
+    </section>
+{% endblock %}
+{% block body_js %}
+    <script type="text/javascript">
+        $(document).ready(function () {
+            $('.tooltip-activate').tooltip();
+            $('#__cnp').addClass("active");
+            $('#__cnp ul').css('display', 'block');
+            $('#__plan').addClass("active");
+            $('#id_universal').on('ifChanged', function (event) {
+                $('#universal_plan_hide').toggle();
+            });
+        })
+    </script>
+{% endblock %}

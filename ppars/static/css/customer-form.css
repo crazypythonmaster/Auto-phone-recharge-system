@@ -1,0 +1,9 @@
+.div-swipe-card{
+    text-align: center
+}
+
+#swipe-card-data{
+    width: 0;
+    overflow: hidden;
+    opacity: 0;
+}

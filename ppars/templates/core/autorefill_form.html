@@ -1,0 +1,286 @@
+{% extends 'core/base.html' %}
+{% block add_css %}
+	<link href="{{ STATIC_URL }}css/selectize.bootstrap3.css" rel="stylesheet" type="text/css">
+	<link href="{{ STATIC_URL }}css/datepicker3.css" rel="stylesheet" type="text/css">
+	<link href="{{ STATIC_URL }}css/refill.css" rel="stylesheet" type="text/css">
+{% endblock %}
+{% block content %}
+	<section class="content-header">
+		<h1>
+			Manage Scheduled Refills
+			<small></small>
+		</h1>
+		<ol class="breadcrumb">
+			<li><a href="{% url 'home' %}">Home</a></li>
+			<li><a href="{% url 'autorefill_list' %}">Scheduled Refills</a></li>
+			<li class='active'>{% if autorefill %} {{autorefill.id}} {% else %} New {% endif %}</li>
+		</ol>
+	</section>
+{% if form.errors %}
+{% for key, value in form.errors.items %}
+	<div class="alert alert-danger alert-dismissable">
+		<button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>
+		{{key}}{{value}}
+	</div>
+{% endfor %}
+{% endif %}
+	<section class="content">
+		{% if not user.is_superuser and autorefill and autorefill.company != user.profile.company %}
+		<div class="error-page">
+			<h2 class="headline text-info">403</h2>
+			<div class="error-content">
+				<h3><i class="fa fa-warning text-yellow"></i> Forbidden Resource.</h3>
+				<p>
+					You are not authorized to access this resource.
+					Meanwhile, you may <a href="{% url 'home' %}">return to dashboard</a>.
+				</p>
+			</div><!-- /.error-content -->
+		</div><!-- /.error-page -->
+		{% else %}
+		<div class="box box-primary">
+			<div class="box-header">
+				<h3 class="box-title">{% if autorefill %} Edit Scheduled Refill: {{ autorefill }} {% else %} Schedule a Refill{% endif %}</h3>
+			</div>
+			<form class="form-horizontal scheduled-refill-form" role="form" method="post" action=".">
+				<div class="box-body">
+					{% csrf_token %}
+					<div class="form-group {% if form.customer.errors %}has-error{% endif %}">
+						<label for="id_customer" class="col-sm-2 control-label">Customer</label>
+						<div class="col-sm-4">
+                            <select class="form-control" id="id_customer" name="customer" required autofocus>
+                                {% for value, text in form.customer.field.choices %}
+                                <option value="{{ value }}" >{{ text }}</option>
+                                {% endfor %}
+                            </select>
+							<input id="hidden_customer" type="hidden" class="form-control" value="{{form.customer.value|default_if_none:'' }}" />
+							<span class="help-block">{{ form.customer.errors }}</span>
+						</div>
+                        <div class="col-sm-1">
+                            <a
+                                    href=""
+                                    id="link-to-customer"
+                                    class="btn btn-info"
+                                    target="_blank"
+                                    >Go to customer</a>
+                        </div>
+					</div>
+					<div class="form-group {% if form.phone_number.errors %}has-error{% endif %}">
+						<label for="id_phone_number" class="col-sm-2 control-label">Phone Number</label>
+						<div class="col-sm-4">
+							<select class="form-control" id="id_phone_number" name="phone_number" required>
+							</select>
+							<input id="hidden_phone_number" type="hidden" class="form-control" value="{{form.phone_number.value|default_if_none:'' }}" />
+							<span class="help-block" id="help_phone_number">{{ form.phone_number.errors }}</span>
+						</div>
+						<div class="col-sm-1">
+							<a class="btn" id="copy_phone_number" title="Copy to clipboard" data-clipboard-text="{{form.phone_number.value|default_if_none:'' }}">
+							<i class="glyphicon glyphicon-th"></i>
+							</a>
+						</div>
+						<div class="col-sm-4">
+							<button type="button" id="last_used_plan" class="btn btn-default btn-xs">Load last used plan</button>
+							{% if verify_carrier %}
+							<button type="button" id="mdn_button" class="btn btn-github btn-xs" data-toggle="tooltip"
+									data-placement="top"
+									data-original-title="It only work for H20, PAGE PLUS CECULLAR, RED POCKET, APPROVEDLINK!!">
+								Get results of carrier</button>
+							<button type="button" id="get_plan" class="btn btn-github btn-xs" data-toggle="tooltip"
+									data-placement="top"
+									data-original-title="It only work for H20, PAGE PLUS CECULLAR, RED POCKET, APPROVEDLINK!!">
+								Get results of Carrier & Schedule</button>
+							{% else %}
+							<button type="button" class="btn btn-github btn-xs" onclick="alert('This option is not enabled for you. Please, contact support to enable it for you.')">Get results of Carrier</button>
+							<button type="button" class="btn btn-github btn-xs" onclick="alert('This option is not enabled for you. Please, contact support to enable it for you.')">Get results of Carrier & Schedule</button>
+							{% endif %}
+							<br>
+							<b id="exp_date_value"></b>
+							</div>
+					</div>
+					<div class="form-group {% if form.carrier.errors %}has-error{% endif %}">
+						<label for="id_plan" class="col-sm-2 control-label">Carrier</label>
+						<div class="col-sm-4">
+							<select class="form-control" id="id_carrier" name="carrier" required>
+							</select>
+							<span class="help-block">{{ form.carrier.errors }}</span>
+							<input id="hidden_carrier" type="hidden" class="form-control" value="{{object.plan.carrier.id|default_if_none:'' }}" />
+						</div>
+					</div>
+					<div class="form-group {% if form.plan.errors %}has-error{% endif %}">
+						<label for="id_plan" class="col-sm-2 control-label">Plan</label>
+						<div class="col-sm-4">
+							<select class="form-control plans" id="id_plan" name="plan" required>
+							</select>
+							<span class="help-block">{{ form.plan.errors }}</span>
+							<input id="hidden_plan" type="hidden" class="form-control" value="{{form.plan.value|default_if_none:'' }}" />
+						</div>
+					</div>
+					<div class="form-group {% if form.renewal_date.errors %}has-error{% endif %}">
+						<label for="id_renewal_date" class="col-sm-2 control-label">Renewal Date</label>
+						<div class="col-sm-4">
+							<div class="date-picker">
+								<div class="input-group date">
+									<div class="input-group-addon">
+										<i class="fa fa-calendar"></i>
+									</div>
+									<input type="text" class="form-control" value="{{form.renewal_date.value|date:'m/d/Y'}}" id="id_renewal_date" name="renewal_date" required>
+                                    <span class="input-group-addon" data-toggle="tooltip" data-placement="top" data-original-title="By default each carrier is set if i runs per 30 days or month to month if you want to overwrite it in example a page plus customer wants to add a $10 pin every 118 days so he doesn't lose his number then add 118 in this text box.">
+                                        <span class="glyphicon glyphicon-info-sign"></span>
+                                    </span>
+								</div>
+								<span class="help-block">{{ form.renewal_date.errors }}</span>
+							</div>
+						</div>
+						<label for="id_renewal_end_date" class="col-sm-1 control-label">Renewal End Date</label>
+						<div id="end_date_div" class="col-sm-4">
+							<div class="date-picker">
+								<div id="end_date_date-picker" class="input-group date">
+									<div class="input-group-addon">
+										<i class="fa fa-calendar"></i>
+									</div>
+									<input type="text" class="form-control" value="{{form.renewal_end_date.value|date:'m/d/Y'}}" id="id_renewal_end_date" name="renewal_end_date">
+                                    <span class="input-group-addon" data-toggle="tooltip" data-placement="top" data-original-title="After this date it won't run this scheduled refill anymore. It's recommended for summer or when customer wants to be refilled for 2 months only (remember if customer is cash prepayment you can add 1 big payment for him for the 2 months or it will remind him the next month to bring the payment)">
+                                        <span class="glyphicon glyphicon-info-sign"></span>
+                                    </span>
+								</div>
+								<span class="help-renewal_end_date">{{ form.renewal_end_date.errors }}</span>
+							</div>
+						</div>
+					</div>
+					<div class="form-group {% if form.renewal_interval.errors %}has-error{% endif %}">
+						<label for="id_renewal_interval" class="col-sm-2 control-label">Renewal Interval</label>
+						<div class="col-sm-4">
+							<input id="id_renewal_interval" name="renewal_interval" type="number" class="form-control" value="{{form.renewal_interval.value|default_if_none:'' }}" />
+							<span class="help-block">{{ form.renewal_interval.errors }}</span>
+						</div>
+					</div>
+					<div class="form-group {% if form.schedule.errors %}has-error{% endif %}">
+						<label for="id_schedule" class="col-sm-2 control-label">Schedule</label>
+						<div class="col-sm-4">
+							<select data-toggle="popover" data-placement="right" data-content="Select schedule" class="form-control schedule_select" id="id_schedule" name="schedule" required>
+								{% for value, text in form.schedule.field.choices %}
+								<option value="{{ value }}" {% if value == form.schedule.value %} selected="selected"{% endif %} >{{ text }}</option>
+								{% endfor %}
+							</select>
+							<span class="help-block">{{ form.schedule.errors }}</span>
+						</div>
+					</div>
+					<div class="form-group {% if form.notes.errors %}has-error{% endif %}">
+						<label for="id_notes" class="col-sm-2 control-label">Notes</label>
+						<div class="col-sm-4">
+								  <textarea
+										  id="id_notes"
+										  name="notes"
+										  rows="4"
+										  class="form-control"
+										  data-toggle="tooltip"
+										  data-placement="auto"
+										  title="Enter any  notes here." >{{ form.notes.value|default_if_none:'' }}</textarea>
+							<span class="help-block">{{ form.notes.errors }}</span>
+						</div>
+					</div>
+					<div class="form-group {% if form.customer.errors %}has-error{% endif %}">
+						<div class="col-sm-offset-2 col-sm-5">
+							<div class="checkbox">
+								<label>
+									<input id="id_enabled" name="enabled" type="checkbox" {% if form.enabled.value %}checked{% endif %}> Enabled
+								</label>
+								<span data-toggle="tooltip" data-placement="top" data-original-title="if you wnat to stop this auto refill then unchecked this.">
+                                    <span class="glyphicon glyphicon-info-sign"></span>
+                                </span>
+							</div>
+						</div>
+					</div>
+					<div class="form-group">
+						<div class="col-sm-offset-2 col-sm-5">
+							<div class="checkbox" id="checkbox_refill">
+								<label>
+									<input id="id_pre_refill_sms" name="pre_refill_sms" type="checkbox" {% if form.pre_refill_sms.value %}checked{% endif %}> Pre Refill SMS
+								</label>
+                                <span data-toggle="tooltip" data-placement="top" data-original-title="If you enable this it will only refill the customer if he replies 'yes' to the messages he gets from your twilio number. If he doesn't reply then it will not refill him but a month after that it will aks him again, if customer agrees then it's better that you enable in customer 'Notification of Payment' and that will send the user a message that he will be charged 3 days before his cc charge (thats 6 days before the refill as charge is done 3 days before refill ) so like this he will be refilled even he doesn't reply 'yes' but he can reply 'no' so that you get a email to cancel his refill.">
+                                    <span class="glyphicon glyphicon-info-sign"></span>
+                                </span>
+							</div>
+						</div>
+					</div>
+					<div id="form_group_pre_refill_sms_number" class="form-group {% if form.pre_refill_sms_number.errors %}has-error{% endif %}">
+						<label for="id_pre_refill_sms_number" class="col-sm-2 control-label">Pre Refill SMS Number</label>
+						<div class="col-sm-4">
+							<input id="id_pre_refill_sms_number" type="text"
+								   placeholder="Default is first phone number"
+								   name="pre_refill_sms_number"
+								   class="form-control"
+								   value="{{ form.pre_refill_sms_number.value|default_if_none:'' }}"
+								   maxlength="10"
+								   pattern="[0-9]{10,10}"
+								   oninvalid="setCustomValidity('The number should only consist of 10 digits!')"
+								   {% if not form.pre_refill_sms.value %}disabled{% endif %}/>
+							<span class="help-block">{{ form.pre_refill_sms_number.errors }}</span>
+						</div>
+					</div>
+                    <div class="form-group">
+                        <div class="col-sm-offset-2 col-sm-5">
+                            <div class="checkbox">
+                                <label
+                                        id="id_need_buy_pins_label"
+                                        {% if form.need_buy_pins.value %}
+                                            data-toggle="tooltip"
+                                        {% endif %}
+                                        data-placement="right"
+                                        data-original-title="Plan has type Domestic Top-Up">
+                                    <input
+                                            id="id_need_buy_pins"
+                                            name="need_buy_pins"
+                                            type="checkbox"
+                                            {% if form.need_buy_pins.value %}
+                                                checked
+                                            {% endif %} /> Auto adding unused pin
+                                </label>
+                            </div>
+							<div id="selling_price"></div>
+                        </div>
+                    </div>
+					<div class="box-footer">
+						<div class="col-sm-offset-2">
+							<button type="button" class="btn btn-primary submit-scheduled-refill">Save</button>
+							{% if autorefill %}<a href="{% url 'autorefill_delete' autorefill.id %}" class="btn btn-danger">Delete</a>{% endif %}
+							<a href="{% url 'autorefill_list' %}" class="btn btn-default">Cancel</a>
+                            {% if autorefill %}
+							    <button
+                                        id="skip_next_refill"
+                                        type="button"
+                                        class="btn btn-warning"
+                                        title="If there was a charge, the money will be used for the next refill."
+                                        >Skip Next Refill</button>
+                            {% endif %}
+						</div>
+					</div>
+				</div>
+			</form>
+		</div>
+	</section>
+{% endif %}
+{% endblock %}
+{% block body_js %}
+	<script src="{{ STATIC_URL }}js/selectize.min.js" type="text/javascript"></script>
+	<script src="{{ STATIC_URL }}js/bootstrap-datepicker.js" type="text/javascript"></script>
+	<script src="{{ STATIC_URL }}js/ZeroClipboard.min.js" type="text/javascript"></script>
+    <script src="{{ STATIC_URL }}js/GETparams.js" type="text/javascript"></script>
+	<script type="text/javascript">
+		links = {
+			ZeroClipboard: '{{ STATIC_URL }}swf/ZeroClipboard.swf',
+			ajaxPhoneNumber: '{% url "ajax_phone_numbers" %}',
+            ajaxCarrier: '{% url 'ajax_carrier' %}',
+			ajaxCarriers: '{% url "ajax_carriers" %}',
+			ajaxCarrierPlans: '{% url "ajax_carrier_plans" %}',
+			ajaxLastTransData: '{% url "ajax_last_transaction_data" %}',
+            ajaxAddPhoneNumber: '{% url "ajax_add_phone_numbers" %}',
+            ajaxSkipNextRefill: '{% if autorefill %}{% url "skip_next_refill" autorefill.id %}{% endif %}',
+            Customer: '{% url 'customer_update' 0 %}',
+			ajaxGetExpDate: '{% url "ajax_verify_carrier" %}',
+            ajaxCheckForSimilarScheduledRefill: '{% url "ajax_check_for_similar_scheduled_refill" %}'
+		};
+		var has_pin_intermediate_step = '{{ has_pin_intermediate_step }}';
+        var scheduled_refill_id = {% if autorefill %}{{autorefill.id}}{% else %}0{% endif %};
+	</script>
+	<script src="{{ STATIC_URL }}js/autorefill_form.js?reload=1112223151" type="text/javascript"></script>
+{% endblock %}

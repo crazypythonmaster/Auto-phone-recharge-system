@@ -1,0 +1,66 @@
+# Name of nodes to start, here we have a single node
+CELERYD_NODES="ppars_b"
+NAME="ppars_b"
+
+# or we could have three nodes:
+#CELERYD_NODES="w1 w2 w3"
+
+# Where to chdir at start.
+CELERYD_CHDIR="/opt/projects/$NAME/main"
+
+# Python interpreter from environment.
+ENV_PYTHON="/opt/projects/$NAME/.env/bin/python"
+
+# How to call "manage.py celeryd_multi"
+CELERYD_MULTI="$ENV_PYTHON $CELERYD_CHDIR/manage.py celeryd_multi"
+
+# How to call "manage.py celeryctl"
+CELERYCTL="$ENV_PYTHON $CELERYD_CHDIR/manage.py celeryctl"
+
+# Extra arguments to celeryd
+CELERYD_OPTS="--time-limit=800 --concurrency=1 -E"
+
+# %n will be replaced with the nodename.
+CELERYD_LOG_FILE="/var/log/celery/celeryd-%n.log"
+CELERYD_PID_FILE="/var/run/celery/celeryd-%n.pid"
+
+# Workers should run as an unprivileged user.
+CELERYD_USER="deploy"
+CELERYD_GROUP="deploy"
+
+# Name of the projects settings module.
+export DJANGO_SETTINGS_MODULE="ppars.settings"
+
+############################
+# CELERYBEAT options
+
+CELERYBEAT_USER=$CELERYD_USER
+CELERYBEAT_GROUP=$CELERYD_USER
+
+# Where to chdir at start.
+CELERYBEAT_CHDIR=$CELERYD_CHDIR
+
+CELERYBEAT_LOG_FILE="/var/log/celery/beat-$NAME.log"
+CELERYBEAT_PID_FILE="/var/run/celery/beat-$NAME.pid"
+
+# Path to celerybeat
+CELERYBEAT="$ENV_PYTHON $CELERYD_CHDIR/manage.py celerybeat"
+
+# Extra arguments to celerybeat
+# CELERYBEAT_OPTS="--schedule=/var/run/celerybeat-schedule"
+
+############################
+# CELERYCAM options
+
+CELERYEV="$ENV_PYTHON $CELERYD_CHDIR/manage.py celerycam"
+
+CELERYEV_CAM="djcelery.snapshot.Camera"
+
+# %n will be replaced with the nodename.
+CELERYEV_LOG_FILE="/var/log/celery/cam-$NAME.log"
+CELERYEV_PID_FILE="/var/run/celery/cam-$NAME.pid"
+
+# CELERYEV_LOG_LEVEL="debug"
+
+CELERYEV_USER=$CELERYD_USER
+CELERYEV_GROUP=$CELERYD_USER

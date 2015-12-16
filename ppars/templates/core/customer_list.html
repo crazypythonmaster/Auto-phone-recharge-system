@@ -1,0 +1,248 @@
+{% extends 'core/base.html' %}
+{% load tz %}
+{% block add_css %}
+    <link href="{{ STATIC_URL }}css/datatables/dataTables.bootstrap.css" rel="stylesheet" type="text/css" />
+    <link href="{{ STATIC_URL }}css/customer.css" rel="stylesheet" type="text/css" />
+{% endblock %}
+{% block content %}
+    <section class="content-header">
+        <h1>Manage Customers</h1>
+        <br/>
+        <div class="many-buttons-lines">
+            <a class="btn btn-primary" href="{% url 'customer_create' %} "><i class="fa fa-plus"></i> Add Customer</a>
+            <a style="background-color: #ff1441; border-color: #ff1441" class="btn btn-primary" href="{% url 'customer_export' %}?template=false&addcc=false">Export Customers</a>
+            <a style="background-color: #70b7ff; border-color: #70b7ff" class="btn btn-primary" href="{% url 'customer_import' %}">Import Customers</a></li>
+            <a style="background-color: #31dd11; border-color: #31dd11" class="btn btn-primary" href="{% url 'import_phone_numbers' %}">Import Phone Numbers</a>
+        </div>
+        <div class="many-buttons-lines">
+            <a style="background-color: #8d7fff; border-color: #8d7fff" class="btn btn-primary" href="{% url 'import_customers_from_usaepay' %}">Import Customers from USAePay</a>
+            {% if user.profile.company.use_usaepay_2 %}
+            <a style="background-color: #ab84ff; border-color: #ab84ff" class="btn btn-primary" href="{% url 'import_customers_from_usaepay' %}?account=2">Import Customers from USAePay[2]</a>
+            {% endif %}
+        </div>
+        <div class="many-buttons-lines">
+            <a style="background-color: #d556ff; border-color: #d556ff" class="btn btn-primary" href="{% url 'import_customers_from_redfin' %}">Import Customers from RedFinNetwork</a>
+            <a style="background-color: #ffa142; border-color: #ffa142" class="btn btn-primary" href="{% url 'restart_creating_schedule_for_customers_from_redfin' %}">Restart creating schedule for customers imported from RedFinNetwork</a>
+        </div>
+        <div class="many-buttons-lines">
+        <a href="{% url 'import_log' %}">Import Logs</a>
+        </div>
+        <ol class="breadcrumb">
+            <li><a href=""><i class="fa fa-dashboard"></i> Home</a></li>
+            <li class="active">Customers</li>
+        </ol>
+    </section>
+    {% if messages %}
+        {% for message in messages %}
+    	    <div class="alert 
+	            {% if message.tags == 'INFO' %}alert-info {% elif message.tags == 'success' %} alert-success {% elif message.tags == 'error' %} alert-danger {% else %} alert-warning {% endif %}
+            alert-dismissable">
+	            <button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>
+	            {% autoescape off %}
+                    <div class="info-message">{{ message }}</div>
+                {% endautoescape %}
+
+	        </div>
+        {% endfor %}
+    {% endif %}
+    <section class="content">
+        <div class="box">
+            <ul class="nav nav-tabs filters">
+                <li role="presentation" class="active"><a href="#" filter="all">All</a></li>
+                <li role="presentation"><a href="#" filter="usanotcc">USAePay: not saved</a></li>
+            </ul>
+            <div class="box-body table-responsive">
+                <table class="table table-condensed" id="customer-table">
+                    <thead>
+                        <tr>
+                            <th>First Name</th>
+                            <th>Last Name</th>
+                            <th>Primary Email</th>
+                            <th>Phone Numbers</th>
+                            <th>City</th>
+                            <th>State</th>
+                            <th>Zip</th>
+                            <th>Payment Type</th>
+                            <th>Payment Gateway</th>
+                            <th>Enabled</th>
+                            <th>Created On</th>
+                            <th>Updated On</th>
+                            <th class="sr-only">USAePay saved</th>
+                        </tr>
+                    </thead>
+                    <tfoot>
+                        <tr>
+                            <th></th>
+                            <th></th>
+                            <th></th>
+                            <th></th>
+                            <th></th>
+                            <th></th>
+                            <th></th>
+                            <th></th>
+                            <th>
+                                <select class="form-control" id="gtw-filter">
+                                    <option>All</option>
+                                    <option>Authorize</option>
+                                    <option>USAePay</option>
+                                    <option>RedFinNetwork</option>
+                                    <option>DollarPhone</option>
+                                    <option>Cash</option>
+                                    <option>Cash(PrePayment)</option>
+                                </select>
+                            </th>
+                            <th>
+                                <select class="form-control" id="enabled-filter">
+                                    <option>All</option>
+                                    <option>Enabled</option>
+                                    <option>Disabled</option>
+                                </select>
+                            </th>
+                            <th></th>
+                            <th></th>
+                        </tr>
+                    </tfoot>
+                    <tbody>
+
+                    </tbody>
+                </table>
+            </div>
+        </div>
+	</section>
+{% endblock %}
+{% block body_js %}
+	<script src="{{ STATIC_URL }}js/datatables/jquery.dataTables.js" type="text/javascript"></script>
+	<script src="{{ STATIC_URL }}js/datatables/dataTables.bootstrap.js" type="text/javascript"></script>
+    <script type="text/javascript">
+        var originalLeave = $.fn.popover.Constructor.prototype.leave;
+        $.fn.popover.Constructor.prototype.leave = function(obj){
+          var self = obj instanceof this.constructor ?
+		  obj : $(obj.currentTarget)[this.type](this.getDelegateOptions()).data('bs.' + this.type)
+   		  var container, timeout;
+		  originalLeave.call(this, obj);
+   		  if(obj.currentTarget) {
+			container = $(obj.currentTarget).siblings('.popover')
+			timeout = self.timeout;
+			container.one('mouseenter', function(){
+	   	    	//We entered the actual popover – call off the dogs
+		    	clearTimeout(timeout);
+				//Let's monitor popover content instead
+				container.one('mouseleave', function(){
+					$.fn.popover.Constructor.prototype.leave.call(self, self);
+			  	});
+			})
+		  }
+        };
+        $(document).ready(function(){
+            var customer_table = $('#customer-table').dataTable({
+                "bServerSide": true,
+                "sAjaxSource": '/ajax_customers_list',
+                "bProcessing": true,
+                "bLengthChange": true,
+                "bFilter": true,
+                "bInfo": true,
+                "bAutoWidth": false,
+                "aoColumnDefs": [
+                    {
+                        // The `data` parameter refers to the data for the cell (defined by the
+                        // `data` option, which defaults to the column being worked with, in
+                        // this case `data: 0`.
+                        "mRender": function ( data, type, row ) {
+                            if (data)
+                                row.status_display = '<span class="fa fa-check-circle text-success"></span>';
+                            else
+                                row.status_display = '<span class="fa fa-minus-circle text-danger"></span>';
+                            row.status_filter = data;
+                            if (type === 'display') {
+                                return row.status_display;
+                            }
+                            else if (type === 'filter') {
+                                return row.status_filter;
+                            }
+                              // 'sort', 'type' and undefined all just use the integer
+                            return row.status_filter;
+                        },
+                        "aTargets": [9]
+                    },
+                    {
+                        // The `data` parameter refers to the data for the cell (defined by the
+                        // `data` option, which defaults to the column being worked with, in
+                        // this case `data: 0`.
+                        "mRender": function ( data, type, row ) {
+                            if (data == null){
+                                return ''
+                            }
+                            var filter = '';
+                            var display = '';
+                            for (var i=0; i<data.length; i++) {
+                                if(data[i]) {
+                                    var row = data[i].split(":");
+                                    filter = filter + row[0] + " ";
+                                    display = display + ' <p>' + row[0] +
+                                          ' <a class="btn btn-primary btn-xs" href="' + row[1] + '">Recharge Now</a>'+
+                                          ' <a class="btn btn-info btn-xs" href="' + row[2] + '">Schedule Later</a>'+
+                                        '</p>';
+                                }
+                            }
+                            row.status_display = '<span class="fa fa-phone-square text-info popovers-activate"' +
+                                    'class="btn btn-default popovers-activate"' +
+                                    'data-popover="true" ' +
+                                    'data-placement="right" ' +
+                                    'data-html="true" ' +
+                                    'data-title="Phone Numbers" ' +
+                                    'data-content=\''+ display +'\'> List </span>';
+
+                            row.status_filter = filter;
+                            if (type === 'display') {
+                                return row.status_display;
+                            }
+                            else if (type === 'filter') {
+                                return row.status_filter;
+                            }
+                              // 'sort', 'type' and undefined all just use the integer
+                            return row.status_filter;
+                        },
+                        "sClass": "numbers-list",
+                        "aTargets": [3]
+                    },
+                    {
+                        "aTargets": [2,3,4,5,6],
+                        "bSortable": false
+                    },
+                    {
+                        "aTargets": [7, 8, 9,10,11],
+                        "bSearchable": false
+                    },
+                    {
+                        "sClass": "no-wrap-td",
+                        "aTargets": [10, 11]
+                    },
+                    {
+                        "sClass": "sr-only",
+                        "aTargets": [12]
+                    }
+                ]
+            });
+            $('#__customers').addClass( "active" );
+		    $('body').popover({ selector: '[data-popover]', trigger: 'click hover', delay: {show: 50, hide: 400}});
+            $('#gtw-filter', this).change( function () {
+                customer_table.fnFilter( $(this).val(), 8);
+            } );
+            $('#enabled-filter', this).change( function () {
+                customer_table.fnFilter( $(this).val(), 9);
+            } );
+             $('.filters a').on('click', function() {
+            $(this).parent().parent().find('.active').removeClass('active');
+            switch($(this).attr('filter')) {
+                case 'all':
+                    customer_table.fnFilter('', 12);
+                    break;
+                case 'usanotcc':
+                    customer_table.fnFilter('True', 12);
+                    break;
+            }
+            $(this).parent().addClass('active');
+        });
+        });
+    </script>
+{% endblock %}

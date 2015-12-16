@@ -1,0 +1,11 @@
+.box{
+    padding: 10px;
+}
+
+#log > thead > tr > th:first-child{
+    width: 50px
+}
+
+#log > thead > tr > th:nth-child(2){
+    width: 120px
+}

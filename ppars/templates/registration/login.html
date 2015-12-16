@@ -1,0 +1,53 @@
+{% extends 'core/base.html' %}
+{% block content %}
+<div class="form-box" id="login-box">
+    <div class="header">Sign In</div>
+    <form class="form-signin" role="form" method="post" action="{% url 'ppars.apps.accounts.views.login_user' %}">
+        {% csrf_token %}
+        <div class="body bg-gray">
+            <div class="form-group {% if error %}has-error{% endif %}">
+                <input type="text" name="username" id="id_username" class="form-control" placeholder="User ID" required
+                       autofocus/>
+                {% if error %}
+                <span class="help-block">Username and Password didn't match.</span>
+                {% endif %}
+                {% if license_limit %}
+                <span class="help-block">Your license have expiriend!</span>
+                {% endif %}
+            </div>
+            <div class="form-group">
+                <input type="password" name="password" id="id_password" class="form-control" placeholder="Password"
+                       required/>
+            </div>
+            <input type="hidden" name="next" value="{{ next }}"/>
+        </div>
+        <div class="footer">
+            <button type="submit" class="btn bg-olive btn-block">Sign me in</button>
+            <p><a href="{% url 'password_reset' %}">I forgot my password</a></p>
+        </div>
+    </form>
+</div>
+{% endblock %}
+{% block body_js %}
+<script type="text/javascript">
+    $(document).ready(function () {
+        function getUrlParameter(sParam) {
+            var sPageURL = window.location.search.substring(1);
+            var sURLVariables = sPageURL.split('&');
+            for (var i = 0; i < sURLVariables.length; i++)
+            {
+                var sParameterName = sURLVariables[i].split('=');
+                if (sParameterName[0] == sParam)
+                {
+                    return sParameterName[1];
+                }
+            }
+        }
+        if (getUrlParameter('next').length>0){
+            var $form = $('.form-signin');
+            var $form_action = $form.attr('action');
+            $form.attr('action', $form_action+'?next='+getUrlParameter('next'));
+        }
+    });
+</script>
+{% endblock %}

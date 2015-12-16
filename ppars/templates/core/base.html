@@ -1,0 +1,326 @@
+{% extends 'core/template.html' %}
+{% load url from future %}
+{% load tz %}
+
+{% block meta_viewport %}width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no{% endblock %}
+{% block head_css %}
+    <link rel="stylesheet" href="{{ STATIC_URL }}css/font-awesome.min.css" />
+    <link rel="stylesheet" href="{{ STATIC_URL }}css/bootstrap.min.css" />
+    <link rel="stylesheet" href="{{ STATIC_URL }}css/ionicons.min.css" />
+    <link rel="stylesheet" href="{{ STATIC_URL }}css/AdminLTE.css" />
+    <link rel="stylesheet" href="{{ STATIC_URL }}css/base.css" />
+    <link href="http://code.jquery.com/ui/1.10.2/themes/blitzer/jquery-ui.css" rel="stylesheet" type="text/css" />
+    {% block add_css %}{% endblock %}
+{% endblock %}
+{% block head_js %}
+    <script src="{{ STATIC_URL }}js/jquery.min.js" type="text/javascript"></script>
+    <script src="http://code.jquery.com/ui/1.10.2/jquery-ui.min.js"></script>
+    <script src="{{ STATIC_URL }}js/bootstrap.min.js" type="text/javascript"></script>
+    <script src="{{ STATIC_URL }}js/AdminLTE.js" type="text/javascript"></script>
+    <script src="{{ STATIC_URL }}js/modernizr.min.js" type="text/javascript"></script>
+    <script src="{{ STATIC_URL }}js/suggestions-dropdown.js?reload=237653" type="text/javascript"></script>
+    <script type="text/javascript">
+        $(document).ready(function(){
+            // setting current year in the footer
+            var $logout = $('.logout');
+            var logout_href = $logout.attr('href');
+            $logout.attr('href', logout_href + '?next=' + window.location.pathname);
+            $('.text-footer').prepend('© ' + new Date().getFullYear().toString() + ' ');
+        });
+        //Custom confirm
+        function dialog(message, yesCallback, noCallback, doWhenCreated) {
+            $('body').append(
+                    "<div id=\'modal_dialog\' style=\"display: none\">" +
+                        "<div class=\'title\'>" +
+                        "</div>" +
+                        "</br>" +
+                        "<input class=\"btn btn-danger\" type=\'button\' value=\'No\' id=\'btnNo\' />" +
+                        "<input class=\"btn btn-primary\" type=\'button\' value=\'Yes\' id=\'btnYes\' />" +
+                    "</div>");
+            if (typeof doWhenCreated != 'undefined'){
+                doWhenCreated()
+            }
+            $('.title').html(message);
+            var ask = $('#modal_dialog').dialog();
+            $('#btnYes').click(function() {
+                ask.dialog('close');
+                yesCallback();
+                ask.dialog('destroy').remove();
+            });
+            $('#btnNo').click(function() {
+                ask.dialog('close');
+                noCallback();
+                ask.dialog('destroy').remove();
+            });
+        }
+    </script>
+{% endblock %}
+
+<h1>{% block title %}PrePaid AutoRefill Service{% endblock %}</h1>
+{% block body_class %} skin-black {% endblock %}
+{% block body_content %}
+        <!-- Custom confirm -->
+        <!--<div id='modal_dialog' style="display: none">-->
+            <!--<div class='title'>-->
+            <!--</div>-->
+            <!--</br>-->
+            <!--<input class="btn btn-danger" type='button' value='No' id='btnNo' />-->
+            <!--<input class="btn btn-primary" type='button' value='Yes' id='btnYes' />-->
+        <!--</div>-->
+        <!-- header logo: style can be found in header.less -->
+        <header class="header">
+            <a href="{% url 'home' %}" class="logo">
+                <!-- Add the class icon to your logo image or logo icon to add the margining -->
+                EZ-Cloud AutoRefill System
+            </a>
+            <!-- Header Navbar: style can be found in header.less -->
+
+            <nav class="navbar navbar-static-top" role="navigation">
+            {% if user.is_authenticated %}
+                <!-- Sidebar toggle button-->
+                <a href="#" class="navbar-btn sidebar-toggle" data-toggle="offcanvas" role="button">
+                    <span class="sr-only">Toggle navigation</span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                </a>
+                <div class="navbar-right">
+                    <ul class="nav navbar-nav">
+                        {% if urgent_update %}
+                        <li class="dismiss-urgent-li">
+                            <a style="display: inline-block; color: red;" href="/news/{{ urgent_update.id | safe }}"><span class="glyphicon glyphicon-exclamation-sign" aria-hidden="true"></span> {{ urgent_update.title | safe }} </a><span onclick="$.get('/ajax_dismiss_urgent/'); $('.dismiss-urgent-li').hide()" class="glyphicon glyphicon glyphicon-remove dismiss-urgent" aria-hidden="true"></span>
+                        </li>
+                        {% endif %}
+                        <li>
+                            <form style="margin: 7px;" action="/search/" method="get">
+                                <input type="text" autocomplete="off" name="searchfor" id="search-input" class="form-control" placeholder="Search for...">
+                                <ul class="dropdown-menu search-dropdown" aria-labelledby="search-input">
+                                </ul>
+                            </form>
+                        </li>
+{#                        <li>TEST MODE</li>#}
+                        <li class="dropdown user user-menu">
+                            <a href="#" class="dropdown-toggle" data-toggle="dropdown">
+                                <i class="glyphicon glyphicon-user"></i>
+                                <span> Welcome {{ user.username }} <i class="caret"></i></span>
+                            </a>
+                            <ul class="dropdown-menu">
+                                <!-- User image -->
+                                <li class="user-header bg-light-blue">
+                                    <img src="{{STATIC_URL}}img/avatar5.png" class="img-circle" alt="User Image" />
+                                    <p>
+                                        Store {{ user.username }}
+                                        <small>Opened since {{ user.date_joined|date:"M Y" }}</small>
+                                    </p>
+                                </li>
+                                <!-- Menu Body -->
+                               
+                                <!-- Menu Footer-->
+                                <li class="user-footer">
+                                    <div class="pull-left">
+                                        <a href="{% url 'password_change' %}" class="btn btn-default btn-flat">Change Password</a>
+                                    </div>
+                                    <div class="pull-right">
+                                        <a href="/logout/" class="btn btn-default btn-flat logout">Sign out</a>
+                                    </div>
+                                </li>
+                            </ul>
+                        </li>
+                    </ul>
+                </div>
+                {% endif %}
+            </nav>
+        </header>
+        <div class="wrapper row-offcanvas row-offcanvas-left">
+        {% if user.is_authenticated %}
+          {%if user.is_superuser %}            
+            <!-- Left side column. contains the logo and sidebar -->            
+            <aside class="left-side sidebar-offcanvas">                
+                <!-- sidebar: style can be found in sidebar.less -->
+                <section class="sidebar">
+                    <ul class="sidebar-menu">
+                        <li id="__home">
+                            <a href="{% url 'home' %}">
+                                <i class="fa fa-dashboard"></i> <span>Dashboard</span>
+                            </a>
+                        </li>
+                        <li id="__customers">
+                            <a href="/admin/auth/user/">
+                                <i class="fa fa-users"></i> <span>Stores</span>
+                            </a>
+                        </li>
+                        <li class="treeview" id="__cnp">
+                            <a href="#">
+                                <i class="fa fa-bell"></i> <span>News</span>
+                                <i class="fa fa-angle-left pull-right"></i>
+                            </a>
+                            <ul class="treeview-menu">
+                            <li id="__news">
+                                <a href="/admin/core/news/">
+                                    <i class="fa fa-book"></i> <span>Add News</span>
+                                </a>
+                            </li>
+                            <li id="__ez_cloud_emails">
+                                <a href="/ez_cloud_news_emails/">
+                                    <i class="fa fa-archive"></i> <span>EZ Cloud News Emails</span>
+                                </a>
+                            </li>
+                            <li id="__bulk_promotion">
+                                <a href="/admin/notification/bulkpromotion/add/">
+                                    <i class="fa fa-comments"></i> <span>Send Bulk Promotion</span>
+                                </a>
+                            </li>
+                            </ul>
+                        </li>
+                        <li class="treeview" id="__cnp">
+                            <a href="#">
+                                <i class="fa fa-signal"></i> <span>Carriers & Plans</span>
+                                <i class="fa fa-angle-left pull-right"></i>
+                            </a>
+                            <ul class="treeview-menu">
+                                <li id="__carrier"><a href="{% url 'carrier_list' %}"><i class="fa fa-angle-double-right"></i> Carriers</a></li>
+                                <li id="__plan"><a href="{% url 'plan_list' %}"><i class="fa fa-angle-double-right"></i> Plans</a></li>
+                            </ul>
+                        </li>
+                        <li id="__transactions">
+                            <a href="{% url 'transaction_list' %}">
+                                <i class="fa fa-exchange"></i> <span>Transactions</span>
+                            </a>
+                        </li>
+                        <li id="__profile">
+                            <a href="{% url 'profile' %}">
+                                <i class="fa fa-gears"></i> <span>My Settings</span>
+                            </a>
+                        </li>
+                        <li id="__confirm">
+                            <a href="{% url 'confirm_dp' %}">
+                                <i class="fa fa-ban"></i> <span>Confirm Dollar Phone account</span>
+                            </a>
+                        </li>
+                        <li id="__log">
+                            <a href="{% url 'log_list' %}">
+                                <i class="fa fa-list-alt"></i> <span>Logs</span>
+                            </a>
+                        </li>
+                        <li id="__updates">
+                            <a href="{% url 'news' %}">
+                                <i class="fa fa-bookmark"></i> <span>Updates</span>
+                            </a>
+                        </li>
+                        {% if date_gmt %}
+                        <li><a href="">Time GMT: {{ date_gmt|date:"d M Y - H:i" }}</a></li>
+                            <li><a href="">Time US/Eastern: {{ date_gmt|timezone:"US/Eastern" }}</a></li>
+                            {% endif %}
+                    </ul>
+                </section>
+                <!-- /.sidebar -->
+            </aside>          
+          {% else %}
+            <!-- Left side column. contains the logo and sidebar -->            
+            <aside class="left-side sidebar-offcanvas">                
+                <!-- sidebar: style can be found in sidebar.less -->
+                <section class="sidebar">
+                    <ul class="sidebar-menu">
+                        <li id="__home">
+                            <a href="{% url 'home' %}">
+                                <i class="fa fa-dashboard"></i> <span>Dashboard</span>
+                            </a>
+                        </li>
+                        <li id="__customers">
+                            <a href="{% url 'customer_list' %}">
+                                <i class="fa fa-users"></i> <span>Customers</span>
+                            </a>
+                        </li>
+                        <li class="treeview" id="__cnp">
+                            <a href="#">
+                                <i class="fa fa-signal"></i> <span>Carriers & Plans</span>
+                                <i class="fa fa-angle-left pull-right"></i>
+                            </a>
+                            <ul class="treeview-menu">
+                                <li id="__carrier"><a href="{% url 'carrier_list' %}"><i class="fa fa-angle-double-right"></i> Carriers</a></li>
+                                <li id="__carrieradmin"><a href="{% url 'carrier_admin_list' %}"><i class="fa fa-angle-double-right"></i> Dealer Sites</a></li>
+                                <li id="__plan"><a href="{% url 'plan_list' %}"><i class="fa fa-angle-double-right"></i> Plans</a></li>
+                                <li id="__plansellingprice"><a href="{% url 'plan_selling_price_list' %}"><i class="fa fa-angle-double-right"></i> Plan Selling Price</a></li>
+                                {% if user.profile.profit_restriction %}
+                                <li id="__plandiscount"><a href="{% url 'plan_discount_list' %}"><i class="fa fa-angle-double-right"></i> Plan Discounts</a></li>
+                                {% endif %}
+                            </ul>
+                        </li>
+                        <li class="treeview" id="__autorefill">
+                            <a href="#">
+                                <i class="fa fa-tasks"></i> <span>Refill</span>
+                                <i class="fa fa-angle-left pull-right"></i>
+                            </a>
+                            <ul class="treeview-menu">
+                                <li id='__auto'><a href="{% url 'autorefill_list' %}"><i class="fa fa-angle-double-right"></i> Scheduled Refills</a></li>
+                                <li id="__manual"><a href="{% url 'manualrefill' %}"><i class="fa fa-angle-double-right"></i> Manual Refills</a></li>
+                            </ul>
+                        </li>
+                        <li class="treeview" id="__pin">
+                            <a href="#">
+                                <i class="fa fa-ticket"></i> <span>Pins</span>
+                                <i class="fa fa-angle-left pull-right"></i>
+                            </a>
+                            <ul class="treeview-menu">
+                                <li id="__pinreport"><a href="{% url 'pinreport_list' %}"><i class="fa fa-angle-double-right"></i> Pin Report</a></li>
+                                <li id='__unusedpins'><a href="{% url 'unusedpin_list' %}"><i class="fa fa-angle-double-right"></i> Unused Pins</a></li>
+                            </ul>
+                        </li>
+                        <li id="__transactions">
+                            <a href="{% url 'transaction_list' %}">
+                                <i class="fa fa-random"></i> <span>Transactions</span>
+                            </a>
+                        </li>
+                        <li id="__cccharges">
+                            <a href="{% url 'charge_list' %}">
+                                <i class="fa fa-credit-card"></i> <span>Credit Card Charges</span>
+                            </a>
+                        </li>
+                        <li class="treeview" id="__notification">
+                            <a href="#">
+                                <i class="fa fa-envelope"></i> <span>Notification</span>
+                                <i class="fa fa-angle-left pull-right"></i>
+                            </a>
+                            <ul class="treeview-menu">
+                                <li id='__custommessage'><a href="{% url 'custom_message' %}"><i class="fa fa-angle-double-right"></i>PreCharge Custom Message</a></li>
+                                <li id="__bulk"><a href="{% url 'sms_create' %}"><i class="fa fa-angle-double-right"></i>Send Bulk Message</a></li>
+                                <li id="__welcome_email"><a href="{% url 'welcome_email' %}"><i class="fa fa-angle-double-right"></i>Welcome Emails</a></li>
+
+                            </ul>
+                        </li>
+                        <li class="treeview" id="__settings">
+                            <a href="#">
+                                <i class="fa fa-gears"></i> <span>Settings</span>
+                                <i class="fa fa-angle-left pull-right"></i>
+                            </a>
+                            <ul class="treeview-menu">
+                                <li id='__profile'><a href="{% url 'profile' %}"><i class="fa fa-angle-double-right"></i>Global Settings</a></li>
+                                <li id="__user"><a href="{% url 'user_list' %}"><i class="fa fa-angle-double-right"></i>Users</a></li>
+                            </ul>
+                        </li>
+                        <li id="__log">
+                            <a href="{% url 'log_list' %}">
+                                <i class="fa fa-list-alt"></i> <span>Logs</span>
+                            </a>
+                        </li>
+                        <li id="__updates">
+                            <a href="{% url 'news' %}">
+                                <i class="fa fa-bookmark"></i> <span>Updates</span>
+                            </a>
+                        </li>
+                    </ul>
+                </section>
+                <!-- /.sidebar -->
+            </aside>
+            {%endif%}
+            {%endif%}
+            <aside class="right-side">                
+                {% block content %}(No Content){% endblock %}
+            </aside><!-- /.right-side -->
+        </div><!-- ./wrapper -->
+		<div class="mfooter">
+		  <div class="container" style="text-align: right;">
+			<p class="text-right text-footer" style="display: inline-block">EZ-Cloud Software, For sales contact <a href="mailto:info@ezcloudllc.com">info@ezcloudllc.com</a></p> <a target="_blank" href="http://ezcloudllc.com/"> <img style="height: 47px; width: 110px;" src="{{STATIC_URL}}/img/ezcloud-logo.gif" /></a>
+		  </div>
+		</div>
+{% endblock %}

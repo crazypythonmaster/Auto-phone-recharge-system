@@ -1,0 +1,57 @@
+Django==1.6.10
+South==1.0.2
+
+Fabric==1.10.1
+fabtools==0.19.0
+
+
+celery==3.0.23
+django-celery==3.0.23
+# kombu==2.5.16
+# anyjson==0.3.3
+# amqp==1.0.13
+# billiard==2.7.3.34
+
+asana==0.0.5
+twilio==3.6.15
+# six==1.9.0
+# httplib2==0.9
+
+# for twillio
+lxml==3.3.6
+
+py-authorize==1.2.2.3
+# 1.2.3.0
+# translationstring==1.3
+# colander==1.0
+# iso8601==0.1.10
+
+django-import-export==0.2.6
+# diff-match-patch==20110725.1
+# tablib==0.10.0
+
+pytz==2014.10
+python-dateutil==2.4.0
+requests==2.5.1
+
+# for dollarphone
+BeautifulSoup==3.2.1
+suds==0.4
+mechanize==0.2.5
+python-ntlm==1.1.0
+
+
+#html5lib==0.999
+#simplejson==3.6.5
+# django-contrib-requestprovider
+
+django-redis==3.8.2
+django-redisboard==1.1.0
+
+django-debug-toolbar==1.2.2
+django-encrypted-fields==1.1.1
+django-crispy-forms==1.4.0
+
+xlrd==0.9.3
+
+django-summernote

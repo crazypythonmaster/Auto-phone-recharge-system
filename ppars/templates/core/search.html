@@ -1,0 +1,131 @@
+{% extends 'core/base.html' %}
+{% load tz %}
+{% block add_css %}
+    <link href="{{ STATIC_URL }}css/datatables/dataTables.bootstrap.css" rel="stylesheet" type="text/css" />
+    <link href="{{ STATIC_URL }}css/search.css" rel="stylesheet" type="text/css" />
+{% endblock %}
+{% block content %}
+    <section class="content-header">
+        <h1>
+            Searching for {{ searching_for }}
+        </h1>
+        <ol class="breadcrumb">
+            <li><a href="{% url 'home' %}"><i class="fa fa-dashboard"></i> Home</a></li>
+        </ol>
+        {% if is_number %}
+        </br>
+        {% if is_phone_number %}
+        <a class="btn btn-primary" href="{% url 'customer_create' %}?phone={{ number }}"><i class="fa fa-plus"></i> Create Customer</a>
+        <a class="btn btn-success" onclick="refillAsWalkIn()"><i class="fa fa-plus"></i> Refill As Walk In Customer</a>
+        <a class="btn btn-success" {% if user.profile.company.can_swipe_card_in_search %}href="/swipe_and_refill/?phone={{ number }}"{% else %}href="#" onclick="alert('This option is not enabled for you. Please, contact support to enable it for you.');"{% endif %} style="background-color: #0fbb39"><i class="fa fa-plus"></i> Swipe & Refill or Charge</a>
+        {% endif %}
+        <a class="btn btn-info" href="{% url 'unusedpin_create' %}?pin={{ number }}"><i class="fa fa-plus"></i> Create Unused Pin</a>
+        {% endif %}
+        <div class="error-message" style="display: none; color: red"></div>
+    </section>
+    <section class="content">
+        <div class="box">
+            <div>
+                <button class="btn btn-default" id="filter-all">All</button>
+                <button class="btn btn-primary" id="filter-phone-number" style="background-color: #548af1; border-color: #548af1;">PhoneNumber</button>
+                <button class="btn btn-primary" id="filter-customers" style="background-color: #f18868; border-color: #f18868;">Customers</button>
+                <button class="btn btn-primary" id="filter-autorefills" style="background-color: #0bf1a8; border-color: #0bf1a8;">AutoRefills</button>
+                <button class="btn btn-primary" id="filter-transactions" style="background-color: #f14f3c; border-color: #f14f3c;">Transactions</button>
+                <button class="btn btn-primary" id="filter-charges" style="background-color: #228b22; border-color: #228b22;">Charges</button>
+                <button class="btn btn-primary" id="filter-unused-pins" style="background-color: #6381cd; border-color: #6381cd;">UnusedPins</button>
+                <button class="btn btn-primary" id="filter-last-4-of-cc" style="background-color: #12dcff; border-color: #12dcff;">Last4ofCC</button>
+            </div>
+            <table class="table" id="search">
+                <thead>
+                    <tr>
+                        <th>Type</th>
+                        <th>Description</th>
+                    </tr>
+                </thead>
+                <tfoot>
+                    <tr>
+                        <th>
+                        </th>
+                        <th></th>
+                    </tr>
+                </tfoot>
+                <tbody>
+
+                </tbody>
+            </table>
+        </div>
+	</section>
+</div>
+{% endblock %}
+
+{% block body_js %}
+    <script src="{{ STATIC_URL }}js/datatables/jquery.dataTables.js" type="text/javascript"></script>
+	<script src="{{ STATIC_URL }}js/datatables/dataTables.bootstrap.js" type="text/javascript"></script>
+    <script type="text/javascript">
+        function refillAsWalkIn(){
+            $.ajax({
+                data: {number: "{{ searching_for }}", gateway: "{% if user.profile.company.default_cash_prepayment_for_walk_in %}CP{% else %}{% endif %}"},
+                url: "/ajax_refill_as_walk_in/",
+                dataType: "json",
+                success: function(result){
+                    if (result['valid']){
+                        $('.error-message').hide();
+                        window.location.href = ('/manualrefill?ph=' + "{{ searching_for }}" + '&cid=' + result['id']).replace(' ', '');
+                    }
+                    else{
+                        $('.error-message').text(result['error']);
+                        $('.error-message').show();
+                    }
+                }
+            });
+        }
+        $(document).ready( function () {
+            var table = $('#search').dataTable({
+            "bServerSide": true,
+            "sAjaxSource": '/ajax_search/',
+            "bProcessing": true,
+			"bLengthChange": true,
+			"bFilter": true,
+			"sDom": '<"top"l>rt<"bottom"pi><"clear">',
+            "bInfo": true,
+			"bAutoWidth": true,
+            "iDisplayLength": 100,
+            "fnServerParams": function ( aoData ) {
+                aoData.push( { "name": "search_for", "value": "{{ searching_for }}" } );
+            },
+            "aoColumnDefs": [
+                { "bSortable": false, "aTargets": [ 0 ] },
+                { "bSortable": false, "aTargets": [ 1 ] }
+                ],
+            "fnRowCallback": function( nRow, aData ) {
+                console.log(aData);
+                var $nRow = $(nRow); // cache the row wrapped up in jQuery
+                switch (aData[0]){
+                    case 'PhoneNumber':
+                        $nRow.css({"background-color":"rgba(84,138,241,0.10)"});
+                        break;
+                    case 'Customer':
+                        $nRow.css({"background-color":"rgba(241,136,104,0.10)"});
+                        break;
+                    case 'AutoRefill':
+                        $nRow.css({"background-color":"rgba(11,241,168,0.10)"});
+                        break;
+                    case 'Transaction':
+                        $nRow.css({"background-color":"rgba(241,79,168,0.10)"});
+                        break;
+                    case 'Charge':
+                        $nRow.css({"background-color":"rgba(34,139,34,0.10)"});
+                        break;
+                    case 'UnusedPin':
+                        $nRow.css({"background-color":"rgba(99,129,205,0.10)"});
+                        break;
+                }
+            }
+            });
+
+            $('#filter-all, #filter-phone-number, #filter-customers, #filter-autorefills, #filter-transactions, #filter-charges, #filter-unused-pins, #filter-last-4-of-cc', this).click( function () {
+                table.fnFilter( $(this).text(), 0);
+            } );
+        });
+    </script>
+{% endblock %}

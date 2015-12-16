@@ -1,0 +1,62 @@
+{% extends 'core/base.html' %}
+
+{% block content %}
+    <section class="content-header">
+        <h1>
+            Manage Customers
+            <small></small>
+        </h1>
+        <ol class="breadcrumb">
+            <li><a href="{% url 'home' %}">Home</a></li>
+			<li><a href="{% url 'customer_list' %}">Customers</a></li>
+			<li><a href="{% url 'customer_update' customer.id%}">{{ customer }}</a></li>
+			<li class='active'>Delete</li>       
+        </ol>
+    </section>
+    <section class="content">
+	   {% if customer and customer.company != user.profile.company %}
+	   <div class="error-page">
+			<h2 class="headline text-info">403</h2>
+			<div class="error-content">
+				<h3><i class="fa fa-warning text-yellow"></i> Forbidden Resource.</h3>
+				<p>
+					You are not authorized to access this resource. 
+					Meanwhile, you may <a href="{% url 'home' %}">return to dashboard</a>.
+				</p>
+			 </div><!-- /.error-content -->
+		</div><!-- /.error-page -->
+
+	   {% else %}
+	    	<div class="box box-danger">
+				<div class="box-header">
+					<h3 class="box-title">Delete Customer: {{customer}}</h3>
+				</div>
+				<form class="form-horizontal" role="form" method="post" action=".">
+      				{% csrf_token %}
+      			<div class="form-group">
+					<div class="col-sm-offset-1">
+          				<label class="control-label" for="submit">
+          				Are you sure you want to delete Customer "{{ object }}"?</label><br/>
+	  					Do note that this will also delete all the customers' scheduled refills.
+					</div>
+      			</div>
+				<div class="box-footer">
+					<div class="col-sm-offset-1">
+      	  				<button type="submit" class="btn btn-danger">Delete</button>
+      	  				<a href="{% url 'customer_list' %}" class="btn btn-default">Cancel</a>
+    				</div>
+				</div>
+      		</div>
+    	</form>
+
+   {% endif %}
+   </section>
+{% endblock %}
+{% block body_js %}
+    <script type="text/javascript">
+      $(document).ready(function() {
+	$('.tooltip-activate').tooltip();
+	$('#__customers').addClass( "active" );
+      });
+    </script>
+{% endblock %}

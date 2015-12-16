@@ -1,0 +1,1472 @@
+{% extends 'core/base.html' %}
+{% block add_css %}
+<link href="{{ STATIC_URL }}css/customer-form.css" rel="stylesheet" type="text/css">
+<link href="{{ STATIC_URL }}css/selectize.bootstrap3.css" rel="stylesheet" type="text/css">
+{% endblock %}
+{% block content %}
+    <section class="content-header">
+        <h1>
+            Manage Customers
+            <small></small>
+        </h1>
+        <ol class="breadcrumb">
+            <li><a href=""><i class="fa fa-dashboard"></i> Home</a></li>
+            <li><a href="{% url 'customer_list' %}">Customers</a></li>
+	        <li class='active'>{% if customer %} {{customer}} {% else %} New {% endif %}</li>
+        </ol>
+    </section>
+	<div id="id_errors">
+            {% if form.errors %}
+      {% for key, value in form.errors.items %}
+	 <div  class="alert alert-danger alert-dismissable">
+           <button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>
+           {{key}}{{value|safe|escape}}
+         </div>
+      {% endfor %}
+    {% endif %}
+		</div>
+	<section class="content">
+	   {% if not user.is_superuser and customer and customer.company != user.profile.company %}
+	   <div class="error-page">
+			<h2 class="headline text-info">403</h2>
+			<div class="error-content">
+				<h3><i class="fa fa-warning text-yellow"></i> Forbidden Resource.</h3>
+				<p>
+					You are not authorized to access this resource.
+					Meanwhile, you may <a href="{% url 'home' %}">return to dashboard</a>.
+				</p>
+			 </div><!-- /.error-content -->
+		</div><!-- /.error-page -->
+	   {% else %}
+	   <div class="box box-primary">
+			<div class="box-header">
+				<h3 class="box-title">{% if customer %} Edit Customer: {{customer}}. Credits: <b>${{unused_charge_amount_left}}</b> {% else %} Add New Customer{% endif %}</h3>
+                {% if customer %}
+                <a class="btn btn-app" style="color:#ffffff; background-color: green; height: 50px;" target="_blank" href="{% url 'charge_list' %}?cid={{customer.id}}"><b>Add Cash Payment</b></a>
+                <a class="btn btn-app" style="color:#ffffff; background-color: #0088CC; height: 50px;" target="_blank" href="/customer/transactions/{{customer.id}}"><b>View Transactions</b></a>
+                <a class="btn btn-app" style="color:#ffffff; background-color: #bf800c; height: 50px;" target="_blank" href="/customer/autorefills/{{customer.id}}"><b>View Autorefills</b></a>
+                <a class="btn btn-app" style="color:#ffffff; background-color: #f4543c; height: 50px;" target="_blank" href="/customer/cc_charges/{{customer.id}}"><b>View Credit Card Charges</b></a>
+			    {% endif %}
+            </div>
+    		<form class="form-horizontal" id="customerForm" role="form" method="post" action=".">
+				{% csrf_token %}
+                <div class="box-footer">
+			  		<div class="col-sm-offset-2">
+						{% if not user.is_superuser or customer.company == user.profile.company %}
+						<button type="button" class="btn btn-primary save-customer-button">Save</button>
+						{% endif %}
+						{% if customer %}<a href="{% url 'customer_delete' customer.id %}" class="btn btn-danger">Delete</a>{% endif %}
+						<a href="{% url 'customer_list' %}" class="btn btn-default">Cancel</a>
+						{% if not user.is_superuser or customer.company == user.profile.company %}
+						<div  class="btn btn-info" onclick="rechargeNow();">Recharge now</div>
+                      	<div  class="btn btn-warning" onclick="scheduleLater();">Schedule later</div>
+						{%if customer %}
+							{% if verify_carrier %}
+							<button id="schedule_monthly_carrier" type="button" class="btn btn-instagram" data-toggle="tooltip" data-placement="top" data-original-title=" It only work for H20, PAGE PLUS CECULLAR, RED POCKET!" onclick='$("#id_modal_schedule_refill").modal();'>Schedule monthly based on results of carrier!</button>
+							{% else %}
+							<button type="button" class="btn btn-instagram"onclick="alert('This option is not enabled for you. Please, contact support to enable it for you.')">Schedule monthly based on results of carrier!</button>
+							{% endif %}
+						{% endif %}
+						{% endif %}
+					</div>
+			    </div>
+                <div class="form-group">
+					<label for="id_first_name" class="col-sm-2 control-label">Customer Name</label>
+					<div class="col-sm-3">
+						<input id="id_first_name" name="first_name" type="text" class="form-control" value="{{ form.first_name.value|default_if_none:"" }}" autofocus placeholder="First Name"/>
+					</div>
+					<div class="col-sm-3">
+						<input id="id_middle_name" name="middle_name" type="text" class="form-control" value="{{ form.middle_name.value|default_if_none:"" }}" placeholder="Middle Name"/>
+					</div>
+					<div class="col-sm-3">
+					  	<input id="id_last_name" name="last_name" type="text" class="form-control" value="{{ form.last_name.value|default_if_none:"" }}" placeholder="Last Name"/>
+					</div>
+				</div>
+				<div class="form-group" id="div_primary_email">
+					<label for="id_primary_email" class="col-sm-2 control-label">Primary E-Mail</label>
+					<div class="col-sm-4">
+						<input id="id_primary_email" name="primary_email" type="email" class="form-control" value="{{form.primary_email.value|default_if_none:"" }}"/>
+						<span class="help-block" id="help_primary_email"></span>
+					</div>
+      			</div>
+                {% if use_sellercloud %}
+                <div class="form-group" id="div_sc_account">
+					<label for="id_sc_account" class="col-sm-2 control-label">SellerCloud Account ID</label>
+					<div class="col-sm-4">
+						<input id="id_sc_account" name="sc_account" type="text" class="form-control" value="{{form.sc_account.value|default_if_none:"" }}"/>
+						<span class="help-block" id="help_sc_account"></span>
+					</div>
+      			</div>
+                {% endif %}
+				<div class="modal fade" id="movePhoneModal" role="dialog">
+					<div class="modal-dialog modal-lg">
+						<div class="modal-content">
+							<div class="modal-header">
+								<button type="button" class="close" data-dismiss="modal">&times;</button>
+								<h4 class="modal-title"></h4>
+							</div>
+							<div class="modal-body">
+								<select id="move_to_customer">
+									{% for cust in customers %}
+										{% if customer.id != cust.id %}
+											<option value="{{cust.id}}">{{cust.full_name}}</option>
+										{% endif %}
+									{% endfor %}
+								</select>
+							</div>
+							<div class="modal-footer">
+								<button type="button" id="apply-move-number" class="btn btn-default" style="background-color: green; color: white;">Apply</button>
+								<button type="button" class="btn btn-default" data-dismiss="modal" style="background-color: red; color: white;">Close</button>
+							</div>
+						</div>
+					</div>
+				</div>
+		        <div class="form-group div_phone_number">
+                    <label for="id_phone_number1" class="col-sm-2 control-label">Phone 1</label>
+                    <div class="col-sm-2">
+                        <input id="id_phone_number1" name="phone_number1" type="text" class="form-control" value=""/>
+                        <span class="help-block" id="help_phone_number1"></span>
+                    </div>
+                    <label for="id_phone_title1" class="col-sm-1 control-label">Title 1</label>
+                    <div class="col-sm-2">
+                        <select id="id_phone_title1" name="phone_title1" class="form-control">
+							<option value=""></option>
+							<option value="Owner">Owner</option>
+							<option value="Home">Home</option>
+							<option value="Office">Office</option>
+							<option value="Wife">Wife</option>
+							<option value="Husband">Husband</option>
+							<option value="Dome">Daughter</option>
+							<option value="Son">Son</option>
+						</select>
+                    </div>
+					<label for="id_sms_gateway1" class="col-sm-1 control-label">SMS Email</label>
+                    <div class="col-sm-2">
+                        <select id="id_sms_gateway1" name="sms_gateway1" class="form-control">
+							{% for gateway in sms_email_gateways %}
+					  	  		<option value="{{ gateway.0 }}" >{{ gateway.1 }}</option>
+							{% endfor %}
+						</select>
+                    </div>
+					<div class="col-sm-1">
+						<div style="font-size: 11px">Enable sms email:</div>
+						<div>
+							<input id="id_for_sms_email1" name="for_sms_email1" type="checkbox">
+						</div>
+					</div>
+                    <div class="col-sm-1">
+                        <button type="button" id="remove_phone_number1" onclick="deletePhoneNumberRow(this)" class="btn btn-xs"><span class="glyphicon glyphicon-minus-sign" style="color: red" aria-hidden="true"></span></button>
+                    </div>
+                    <div class="col-sm-1">
+                        <button type="button" data-toggle="tooltip" title="Move number to another customer." id="move_phone_number1" onclick="movePhoneNumberRow(this)" class="btn btn-xs"><span class="glyphicon glyphicon-phone" style="color: red" aria-hidden="true"></span></button>
+                    </div>
+				</div>
+                <div class="form-group" id="div_add_another">
+                    <label for="id_add_another" class="col-sm-2 control-label">Add number:</label>
+                    <div class="col-sm-4">
+                        <button type="button" id="add_another_button" class="btn btn-xs"><span class="glyphicon glyphicon-plus-sign" style="color: green" aria-hidden="true"></span></button>
+                    </div>
+				</div>
+                <div class="form-group" id="div_phone_numbers" hidden>
+      				<label for="id_phone_numbers" class="col-sm-2 control-label">Phone Numbers</label>
+					<div class="col-sm-4">
+					  <textarea
+						id="id_phone_numbers"
+						name="phone_numbers"
+						rows="4"
+						class="form-control tooltip-activate"
+						required
+						data-toggle="tooltip"
+						data-placement="auto"
+						title="Enter a comma seperated list of Phone Numbers" >{{ form.phone_numbers.value|default_if_none:"" }}</textarea>
+					  <span class="help-block" id="help_phone_numbers"></span>
+					</div>
+				</div>
+                <div class="form-group" id="div_phone_titles" hidden>
+      				<label for="id_phone_titles" class="col-sm-2 control-label">Phone Titles</label>
+					<div class="col-sm-4">
+					  <textarea
+						id="id_phone_titles"
+						name="phone_titles"
+						rows="4"
+						class="form-control tooltip-activate"
+						required
+						data-toggle="tooltip"
+						data-placement="auto"
+						title="Enter a comma seperated list of Phone Titles" >{{ form.phone_titles.value|default_if_none:"" }}</textarea>
+					  <span class="help-block" id="help_phone_titles"></span>
+					</div>
+				</div>
+				<div class="form-group" id="div_phone_gateways" hidden>
+      				<label for="id_phone_gateways" class="col-sm-2 control-label">Phone Gateways</label>
+					<div class="col-sm-4">
+					  <textarea
+						id="id_phone_gateways"
+						name="phone_gateways"
+						rows="4"
+						class="form-control tooltip-activate"
+						required
+						data-toggle="tooltip"
+						data-placement="auto"
+						title="Enter a comma seperated list of Phone Gateways" >{{ form.phone_gateways.value|default_if_none:"" }}</textarea>
+					  <span class="help-block" id="help_phone_gateways"></span>
+					</div>
+				</div>
+				<div class="form-group" id="div_phone_sms_emails" hidden>
+      				<label for="id_phone_sms_emails" class="col-sm-2 control-label">Phone SMS Emails</label>
+					<div class="col-sm-4">
+					  <textarea
+						id="id_phone_sms_emails"
+						name="phone_sms_emails"
+						rows="4"
+						class="form-control tooltip-activate"
+						required
+						data-toggle="tooltip"
+						data-placement="auto"
+						title="Enter a comma seperated list of Phone SMS Emails" >{{ form.phone_sms_emails.value|default_if_none:"" }}</textarea>
+					  <span class="help-block" id="help_phone_sms_emails"></span>
+					</div>
+				</div>
+				
+				<div class="form-group">
+					<label for="id_address" class="col-sm-2 control-label">Street Address</label>
+					<div class="col-sm-4">
+					  <textarea
+						id="id_address"
+						name="address"
+						rows="1" cols="10"
+						class="form-control tooltip-activate expand "
+						data-toggle="tooltip"
+						data-placement="auto"
+						title="Enter the full address here." >{{ form.address.value|default_if_none:"" }}</textarea>
+					</div>
+			  	</div>
+			  	<div class="form-group">
+					<label for="id_city" class="col-sm-2 control-label">City</label>
+					<div class="col-sm-3">
+					  <input id="id_city" name="city" type="text" class="form-control" value="{{ form.city.value|default_if_none:"" }}"/>
+                    </div>
+					<label for="id_state" class="col-sm-1 control-label">State</label>
+					<div class="col-sm-2">
+					  <input id="id_state" name="state" type="text" class="form-control" value="{{ form.state.value|default_if_none:"" }}"/>
+                    </div>
+					<label for="id_zip" class="col-sm-1 control-label">Zip Code</label>
+					<div class="col-sm-2">
+					  <input id="id_zip" name="zip" type="text" class="form-control" maxlength="6" value="{{ form.zip.value|default_if_none:"" }}"/>
+					</div>
+				</div>
+				<div class="form-group">
+					<label for="id_charge_type" class="col-sm-2 control-label">Payment Type</label>
+					<div class="col-sm-2">
+					  <select class="form-control" id="id_charge_type" name="charge_type" required>
+						{% for value, text in form.charge_type.field.choices %}
+						  <option value="{{ value }}" {% if value = form.charge_type.value %} selected="selected"{% endif %} >{{ text }}</option>
+						{% endfor %}
+					  </select>
+					</div>
+				</div>
+                <div class="form-group">
+					<label for="id_charge_getaway" class="col-sm-2 control-label">Payment Gateway</label>
+					<div class="col-sm-2">
+					  <select class="form-control" id="id_charge_getaway" name="charge_getaway">
+						{% for value, text in form.charge_getaway.field.choices %}
+						  <option value="{{ value }}" {% if value = form.charge_getaway.value %} selected="selected"{% endif %} >{{ text }}</option>
+						{% endfor %}
+					  </select>
+                	</div>
+				</div>
+                <div class="form-group swipe-card-form-group">
+                    <div class="col-sm-4 div-swipe-card">
+                        <input id="swipe-card-data" value="" autocomplete="off">
+                        <button type="button" class="btn btn-primary btn-xs swipe-card" onclick="{% if user.profile.company.can_swipe_card_in_customer %}swipeCard();{% else %}alert('This option is not enabled for you. Please, contact support to enable it for you.');{% endif %}">Swipe Credit Card</button>
+                    </div>
+                </div>
+				{% if form.instance.creditcard %}
+                    <div class="form-group">
+                        <div class="col-sm-offset-2 col-sm-10">
+                        {% if form.instance.authorize_id %}
+                            <div class="label label-success">Authorize: card added</div>
+                        {% else %}
+                            <div class="label label-danger">Authorize: card not added</div>
+                        {% endif %}
+                        {% if form.instance.usaepay_customer_id %}
+                            <div class="label label-success">USAePay: card added</div>
+                        {% else %}
+                            <div class="label label-danger" >USAePay: card not added</div>
+                        {% endif %}
+                        {% if user.profile.company.use_usaepay_2 %}
+                            {% if form.instance.usaepay_customer_id_2 %}
+                                <div class="label label-success">USAePay[2]: card added</div>
+                            {% else %}
+                                <div class="label label-danger" >USAePay[2]: card not added</div>
+                            {% endif %}
+                        {% endif %}
+
+						{% if form.instance.redfin_cc_info_key %}
+                            <div class="label label-success">RedFinNetwork: card added</div>
+                        {% else %}
+                            <div class="label label-danger">RedFinNetwork: card not added</div>
+                        {% endif %}
+                        {% if form.instance.has_local_cards %}
+                            <div class="label label-success">Local Storage: card added</div>
+                        {% else %}
+                            <div class="label label-danger" >Local Storage: card not added</div>
+                        {% endif %}
+                        </div>
+                     </div>
+					<div class="form-group credit_card">
+						<label for="id_card_number" class="col-sm-2 control-label">Credit Card</label>
+						<div class="col-sm-4">
+							<input type="hidden" id="id_exist_card_number" value='{{ form.instance.creditcard }}'>
+							<p class="btn btn-default" >{{ form.instance.creditcard }}</p>
+							<span id='id_exist_card_type'></span>
+                            <a class="btn btn-primary btn-xs" onclick="updateCard();">Update Credit Card</a>
+                        </div>
+                        <dl class="col-sm-2">
+                            <dt>Last updated</dt>
+                            <dd>{{ form.instance.card_last_updated }}</dd>
+                        </dl>
+
+                        <dl class="col=sm-2">
+                            <dt>Last successful charge</dt>
+                            <dd>{{ form.instance.last_succ_charge_time }}</dd>
+                        </dl>
+					</div>
+                    <div class="form-group credit_card">
+						<label for="id_card_number" class="col-sm-2 control-label">Card owner</label>
+                        <p class="btn btn-default" >{{ customer.cards.all.0.first_name}} {{ customer.cards.all.0.last_name}}</p>
+                    </div>
+                    <div class="form-group card_date">
+						<label class="col-sm-2 control-label">Expiration Date</label>
+						<div class="col-sm-4">
+                           <p class="btn btn-default ">{{ form.instance.get_local_card_expiration_month }}/{{ form.instance.get_local_card_expiration_year }}</p>
+                           <a class="btn btn-primary btn-xs" onclick="updateCardDate();">Update Credit Card Date and CVV</a>
+                        </div>
+                    </div>
+                    {% endif %}
+                <div id="credit-value" class="credit_card_number">
+                    <input type="hidden" id="card_number_update" name="card_number_update" value="False">
+                    <input type="hidden" id="company_cc_type"  value='{{ user.profile.company.cccharge_type }}'>
+					<input type="hidden" name="company"  value='{{ user.profile.company.id }}'>
+					<input type="hidden" id="use_usaepay_2"  value='{{ user.profile.company.use_usaepay_2 }}'>
+                    <div id="credit-names-value" class="form-group credit_card_names">
+                        <label for="id_cc_first_name" class="col-sm-2 control-label">Card owner</label>
+                        <div class="col-sm-3">
+                            <input id="id_cc_first_name" name="cc_first_name" type="text" class="form-control" value="{{ customer.cards.0.first_name.value|default_if_none:"" }}" autofocus placeholder="First Name"/>
+                        </div>
+                        <div class="col-sm-3">
+                            <input id="id_cc_last_name" name="cc_last_name" type="text" class="form-control" value="{{ customer.cards.0.last_name.value|default_if_none:"" }}" placeholder="Last Name"/>
+                        </div>
+                    </div>
+					<div id='card_number_block' class="form-group ">
+						<label for="id_card_number" class="col-sm-2 control-label">Card Number</label>
+						<div class="col-sm-4">
+						  <input
+                                  id="id_card_number"
+                                  name="card_number"
+                                  type="text"
+                                  class="form-control"
+                                  value="{{ form.card_number.value|default_if_none:'' }}"
+                                  placeholder="Card Number"
+                                  maxlength="19"/>
+                        <span class="help-block" id="help_card_number"></span>
+						</div>
+						<div id='card_type'></div>
+					</div>
+                </div>
+                <div class="credit_card_date">
+                    <input type="hidden" id="id_card_date_update" name="card_date_update" value="False">
+                    <div class="form-group">
+						<label for="id_expiration_month" class="col-sm-2 control-label">Expiration Date</label>
+						<div class="col-sm-2">
+						  <select class="form-control" id="id_expiration_month" name="expiration_month" required>
+							{% for value, text in form.expiration_month.field.choices %}
+							  <option value="{{ value }}" {% if value = form.instance.get_local_card_expiration_month %} selected="selected"{% endif %} >{{ text }}</option>
+							{% endfor %}
+						  </select>
+						</div>
+						<div class="col-sm-2">
+							<select class="form-control" id="id_expiration_year" name="expiration_year" required>
+							{% for value, text in form.expiration_year.field.choices %}
+
+							  <option value="{{ value }}" {% if value = form.instance.get_local_card_expiration_year %} selected="selected"{% endif %} >{{ text }}</option>
+							{% endfor %}
+						  </select>
+						</div>
+                        <label for="id_cvv" class="col-sm-1 control-label">CVV</label>
+						<div class="col-sm-2">
+						  <input id="id_cvv" name="cvv" type="text" data-toggle="tooltip" title="Please, enter CVV." class="form-control" value="{{ form.cvv.value|default_if_none:'' }}" autofocus placeholder="CVV" maxlength="4"/>
+						</div>
+					</div>
+                </div>
+            	<div class="form-group">
+					<label for="id_selling_price_level" class="col-sm-2 control-label">Price Level</label>
+					<div class="col-sm-4">
+					  <select class="form-control" id="id_selling_price_level" name="selling_price_level">
+						{% for value, text in form.selling_price_level.field.choices %}
+						  <option value="{{ value }}" {% if value = form.selling_price_level.value %} selected="selected"{% endif %} >{{ text }}</option>
+						{% endfor %}
+					  </select>
+                	</div>
+				</div>
+                <div class="form-group" id="div_customer_discount">
+					<label for="id_customer_discount" class="col-sm-2 control-label">Customer Discount</label>
+					<div class="col-sm-2">
+                         <div class="input-group">
+                            <div class="input-group-addon">$</div>
+						    <input id="id_customer_discount" name="customer_discount" type="text" class="form-control" value="{{form.customer_discount.value|default_if_none:"0.0" }}"/>
+
+					     </div>
+                    </div>
+      			</div>
+                <div class="form-group">
+					<div class="col-sm-offset-2 col-sm-5">
+						<div class="checkbox">
+							<label class="tooltip-activate" data-toggle="tooltip" data-placement="right" title="Check this option to charge sales tax from customer.">
+								<input
+								 id="id_taxable"
+								 name="taxable"
+								 type="checkbox"
+								 {% if form.taxable.value %}checked{% endif %}>
+                                Taxable
+							</label>
+					   </div>
+					</div>
+			    </div>
+				<div class="form-group">
+					<div class="col-sm-offset-2 col-sm-5">
+						<div class="checkbox">
+							<label class="tooltip-activate" data-toggle="tooltip" data-placement="right" title="Check this option to sending sms notification of payment.">
+								<input
+								 id="id_precharge_sms"
+								 name="precharge_sms"
+								 type="checkbox"
+								 {% if form.precharge_sms.value %}checked{% endif %}>
+								 Notification of Payment
+							</label>
+                            <span data-toggle="tooltip" data-placement="top" data-original-title="This will send the customer a sms that he will be charged 3 days before his cc charge (that's 6 days before the refill as charge is done 3 days before refill). It's good for customers that aren't sure they want to refill auto bot like this. They have enough time to reply 'no' and you will disable them. It's also great for customers with debit cards so they can make sure it has funds.">
+                                <span class="glyphicon glyphicon-info-sign"></span>
+                            </span>
+					   </div>
+					</div>
+			    </div>
+				<div class="form-group">
+					<div class="col-sm-offset-2 col-sm-5">
+						<div class="checkbox">
+							<label class="tooltip-activate" data-toggle="tooltip" data-placement="right" title="Check this option to sending successful operation status about refill.">
+								<input
+								 id="id_email_success_refill"
+								 name="email_success_refill"
+								 type="checkbox"
+								 {% if form.email_success_refill.value %}checked{% endif %}>
+								 Notification about Successful Refill
+							</label>
+					   </div>
+					</div>
+			    </div>
+				<div class="form-group">
+					<div class="col-sm-offset-2 col-sm-5">
+						<div class="checkbox">
+							<label class="tooltip-activate" data-toggle="tooltip" data-placement="right" title="Check this option to sending successful operation status about charge.">
+								<input
+								 id="id_email_success_charge"
+								 name="email_success_charge"
+								 type="checkbox"
+								 {% if form.email_success_charge.value %}checked{% endif %}>
+								 Notification about Successful Charge
+							</label>
+					   </div>
+					</div>
+			    </div>
+				<div class="form-group {% if form.send_status.errors %}has-error{% endif %}">
+					<label for="id_send_status" class="col-sm-2 control-label">Send Transaction Status</label>
+					<div class="col-sm-4">
+				  		<select class="form-control" id="id_send_status" name="send_status">
+							{% for value, text in form.send_status.field.choices %}
+						  		<option value="{{ value }}" {% if value = form.send_status.value %} selected="selected"{% endif %} >{{ text }}</option>
+							{% endfor %}
+					  	</select>
+						{% if not user.profile.company.gvoice_enabled %}
+						<span class="text-warning"></span>
+						{% endif %}
+	  				    <span class="help-block">{{ form.send_status.errors }}</span>
+					</div>
+				</div>
+				<div class="form-group">
+					<label for="id_send_status" class="col-sm-2 control-label">Send pin in intermediate step</label>
+					<div class="col-sm-4">
+						<select class="form-control" name="send_pin_prerefill">
+							{% for value, text in form.send_pin_prerefill.field.choices %}
+							<option value="{{ value }}" {% if value = form.send_pin_prerefill.value %} selected="selected"{% endif %} >{{ text }}</option>
+							{% endfor %}
+						</select>
+						{% if not user.profile.company.gvoice_enabled %}
+						<span class="text-warning"></span>
+						{% endif %}
+					</div>
+				</div>
+                <div class="form-group">
+					<div class="col-sm-offset-2 col-sm-5">
+						<div class="checkbox">
+							<label class="tooltip-activate" data-toggle="tooltip" data-placement="right" title="Check this option to send information sms.">
+								<input
+								 id="id_group_sms"
+								 name="group_sms"
+								 type="checkbox"
+								 {% if form.group_sms.value %}checked{% endif %}>
+                                Information Message
+							</label>
+					   </div>
+					</div>
+			    </div>
+                <div class="form-group">
+				    <div class="col-sm-offset-2 col-sm-5">
+						<div class="checkbox">
+							<label>
+								<input
+                                        type="checkbox"
+                                        id="id_enabled"
+                                        name="enabled"
+                                        {% if form.enabled.value %}checked{% endif %}>
+                                Enabled
+							</label>
+							<span data-toggle="tooltip" data-placement="top" data-original-title="if this box is unchecked then you wont be able todo any Manuel refill for this customer , as well all his existing schedule refills will be blocked , this option is used if you want to black list a customer like if he makes disputes etc , to stop a customers refill go this scheduled refill and uncheck enabled by that refill.">
+                                    <span class="glyphicon glyphicon-info-sign"></span>
+                                </span>
+						</div>
+	                </div>
+                </div>
+				<div class="form-group">
+					<label for="id_notes" class="col-sm-2 control-label">Notes</label>
+					<div class="col-sm-4">
+					  <textarea
+                        style="margin-bottom:10px;"
+						id="id_notes"
+						name="notes"
+						rows="4"
+						class="form-control tooltip-activate"
+						data-toggle="tooltip"
+						data-placement="auto"
+						title="Enter customer notes here." >{{ form.notes.value|default_if_none:"" }}</textarea>
+					</div>
+			  	</div>
+    		</form>
+		   <div id="id_modal_schedule_refill" class="modal fade" role="dialog">
+			   <div class="modal-dialog">
+				   <!-- Modal content-->
+				   <div class="modal-content">
+					   <div class="modal-header">
+						   <button type="button" class="close" data-dismiss="modal">&times;</button>
+						   <h4 class="modal-title">Create schedule refill by result from carrier!</h4>
+					   </div>
+					   <div class="modal-body" id="modal-body">
+						   <div class="alert alert-warning">
+							   <button type='button' class='close' data-dismiss='alert'>&times;</button>
+							   <strong>Warning!</strong> It will be work only for PagePlus, RedPocket and H2O!
+						   </div>
+						   <div class="">
+							   <div id="div_phone_number">
+								   <label for="id_phone_number" class="col-sm-2 control-label">Phone Number</label>
+								   <div class="col-sm-4">
+									   <select id="id_phone_number" name="phone_number" required>
+									   </select>
+									   <input id="hidden_phone_number" type="hidden"
+											  value="{{form.phone_number.value|default_if_none:'' }}"/>
+									   <span class="help-block" id="help_phone_number"></span>
+								   </div>
+							   </div>
+						   </div>
+						   <div class="">
+							   <button id="create_schedule" type="button" class="btn btn-bitbucket">
+							   		CREATE
+						   		</button>
+						   </div>
+					   </div>
+					   <div class="modal-footer">
+						   <div class="" id="info_schedules">
+						   </div>
+					   </div>
+					   </div>
+				   </div>
+			   </div>
+		   </div>
+   {% endif %}
+   </section>
+{% endblock %}
+{% block body_js %}
+<script src="{{ STATIC_URL }}js/selectize.min.js" type="text/javascript"></script>
+<script src="{{ STATIC_URL }}js/GETparams.js" type="text/javascript"></script>
+<script type="text/javascript">
+	var $customer_in_move_number = $('#move_to_customer').selectize();
+	var number_to_move = null;
+	var number_block = null;
+
+	$('select').change(function () {
+		var choice = $(this).val();
+		if (choice == 'GV') {
+			$(this).next('span.text-warning').text("Warning! Google Voice sending method is not available for you, you can choose it, but it won't work.");
+		}
+		else {
+			$(this).next('span.text-warning').text("");
+		}
+	}).trigger('change');
+
+	$('#apply-move-number').on('click', function(){
+		movePhone(number_block, number_to_move, $customer_in_move_number.val());
+		number_block = null;
+		number_to_move = null;
+	});
+
+	function movePhoneNumberRow(obj) {
+		number_block = obj;
+		number_to_move = $(obj).parent().parent().children(":first").next().children('[name^=phone_number]').val();
+		$('#movePhoneModal .modal-title').text('Move phone number ' + number_to_move + ' to another customer');
+		$('#movePhoneModal').modal();
+	}
+
+	function movePhone(obj, number, customer_id){
+		var current_elem_number = parseInt($(obj).parent().parent().children(":first").attr('for').split('id_phone_number')[1]);
+		var additional_info = '';
+		var go_to_customer_of_choice = false;
+		if($('.div_phone_number').toArray().length==1) {
+			go_to_customer_of_choice = true;
+			additional_info = ' Customer will be deleted and scheduled refills for this number will be moved to customer of your choice.'
+		}
+		if (confirm('Number will be moved to another customer, are you sure?' + additional_info)) {
+			$.ajax({
+				url: '/move_number_to_another_customer/',
+				data: {number: number, sms_gateway: $('[name^=sms_gateway'+current_elem_number+']').val(), title: $('[name^=phone_title'+current_elem_number+']').val(),
+						sms_email: $('[name^=for_sms_email'+current_elem_number+']').prop('checked'),
+						customer_id: customer_id, current_customer_id: '{% if customer %}{{ customer.id }}{% else %}{% endif %}'},
+				success: function (result) {
+					if (result['valid']){
+						$('#movePhoneModal').modal('hide');
+						var $current_elem = $(obj).parent().parent();
+						var current_elem_number = parseInt($(obj).parent().parent().children(":first").attr('for').split('id_phone_number')[1]);
+						while ($current_elem.next().attr('class') == 'form-group div_phone_number') {
+							$current_elem.next().children(":first").attr('for', 'id_phone_number' + current_elem_number).text('Phone ' + current_elem_number);
+							$current_elem.next().children(":first").next().children(":first").attr('id', 'id_phone_number' + current_elem_number).attr('name', 'phone_number' + current_elem_number);
+							$current_elem.next().children(":first").next().children(".help-block").attr('id', 'help_phone_number' + current_elem_number);
+							$current_elem.next().children(":first").next().next().attr('for', 'id_phone_title' + current_elem_number).text('Title ' + current_elem_number);
+							$current_elem.next().children(":first").next().next().next().children(':first').attr('id', 'id_phone_title' + current_elem_number).attr('name', 'phone_title' + current_elem_number);
+							$current_elem.next().children(":first").next().next().attr('for', 'id_phone_title' + current_elem_number).text('Title ' + current_elem_number);
+							$current_elem.next().children(":first").next().next().next().children(':first').attr('id', 'id_phone_title' + current_elem_number).attr('name', 'phone_title' + current_elem_number);
+							$current_elem.next().children(":first").next().next().next().next().attr('for', 'id_sms_gateway' + current_elem_number);
+							$current_elem.next().children(":first").next().next().next().next().next().children(':first').attr('id', 'id_sms_gateway' + current_elem_number).attr('name', 'sms_gateway' + current_elem_number);
+							$current_elem.next().children(":first").next().next().next().next().next().next().children(':first').next().children(':first').children(':first').attr('id', 'id_for_sms_email' + current_elem_number).attr('name', 'for_sms_email' + current_elem_number);
+							$current_elem.next().children(":first").next().next().next().next().next().next().next().children(':first').attr('id', 'remove_phone_number' + current_elem_number);
+							$current_elem = $current_elem.next();
+							current_elem_number++;
+						}
+						$(obj).parent().parent().remove();
+						if ($('.div_phone_number').toArray().length == 1) {
+							$('#remove_phone_number1').hide();
+						}
+					}
+					else{
+						alert(result['message']);
+					}
+					if (go_to_customer_of_choice){
+						window.location = '/customer/' + customer_id;
+					}
+				}
+			});
+		}
+		else {
+			$('#movePhoneModal').modal('hide');
+		}
+	}
+
+	function deletePhoneNumberRow(obj){
+        if (confirm('This will delete the number, are you sure?')) {
+            var $current_elem = $(obj).parent().parent();
+            var current_elem_number = parseInt($(obj).parent().parent().children(":first").attr('for').split('id_phone_number')[1]);
+            while ($current_elem.next().attr('class') == 'form-group div_phone_number') {
+                $current_elem.next().children(":first").attr('for', 'id_phone_number' + current_elem_number).text('Phone ' + current_elem_number);
+                $current_elem.next().children(":first").next().children(":first").attr('id', 'id_phone_number' + current_elem_number).attr('name', 'phone_number' + current_elem_number);
+                $current_elem.next().children(":first").next().children(".help-block").attr('id', 'help_phone_number' + current_elem_number);
+                $current_elem.next().children(":first").next().next().attr('for', 'id_phone_title' + current_elem_number).text('Title ' + current_elem_number);
+                $current_elem.next().children(":first").next().next().next().children(':first').attr('id', 'id_phone_title' + current_elem_number).attr('name', 'phone_title' + current_elem_number);
+                $current_elem.next().children(":first").next().next().attr('for', 'id_phone_title' + current_elem_number).text('Title ' + current_elem_number);
+                $current_elem.next().children(":first").next().next().next().children(':first').attr('id', 'id_phone_title' + current_elem_number).attr('name', 'phone_title' + current_elem_number);
+				$current_elem.next().children(":first").next().next().next().next().attr('for', 'id_sms_gateway' + current_elem_number);
+				$current_elem.next().children(":first").next().next().next().next().next().children(':first').attr('id', 'id_sms_gateway' + current_elem_number).attr('name', 'sms_gateway' + current_elem_number);
+                $current_elem.next().children(":first").next().next().next().next().next().next().children(':first').next().children(':first').children(':first').attr('id', 'id_for_sms_email' + current_elem_number).attr('name', 'for_sms_email' + current_elem_number);
+                $current_elem.next().children(":first").next().next().next().next().next().next().next().children(':first').attr('id', 'remove_phone_number' + current_elem_number);
+                $current_elem = $current_elem.next();
+                current_elem_number++;
+            }
+            $(obj).parent().parent().remove();
+            if($('.div_phone_number').toArray().length==1) {
+                $('#remove_phone_number1').hide();
+            }
+        }
+    }
+    var card_types = {'3': {'type':'Amex', 'card_length': 15},
+                      '4': {'type':'Visa', 'card_length': 16},
+                      '5': {'type':'Master Card', 'card_length': 16},
+                      '6': {'type':'Discover', 'card_length': 16}
+                     };
+    function getUrlParameter(sParam) {
+        var sPageURL = window.location.search.substring(1);
+        var sURLVariables = sPageURL.split('&');
+        for (var i = 0; i < sURLVariables.length; i++)
+        {
+            var sParameterName = sURLVariables[i].split('=');
+            if (sParameterName[0] == sParam)
+            {
+                return sParameterName[1];
+            }
+        }
+    }
+    var originalForm;
+    $(document).ready(function () {
+		var $select = $('#id_phone_title1').selectize({
+			delimiter: ',',
+			persist: false,
+			create: function(input) {
+				return {
+					value: input,
+					text: input
+				}
+			}
+		});
+		var $select_sms_email = $('#id_sms_gateway1').selectize();
+		var selectize = $select[0].selectize;
+		selectize.createItem($('#id_phone_titles').val().split(',')[0]);
+
+		$('.tooltip-activate').tooltip();
+        $('#__customers').addClass("active");
+        var $existed_phones = $('#id_phone_numbers').val().split(',');
+        var $existed_titles = $('#id_phone_titles').val().split(',');
+        var $existed_gateways = $('#id_phone_gateways').val().split(',');
+        var $existed_use = $('#id_phone_sms_emails').val().split(',');
+        for (var i=0; i<$existed_phones.length; i++){
+            if (!$('#id_phone_number'+ (i+1)).length){
+                $('#div_add_another').before('<div class="form-group div_phone_number">' +
+                        '<label for="id_phone_number' + (i+1) + '" class="col-sm-2 control-label">Phone ' + (i+1) + '</label>' +
+                        '<div class="col-sm-2">' +
+                            '<input id="id_phone_number' + (i+1) + '" name="phone_number' + (i+1) + '" type="text" class="form-control" value=""/>' +
+                            '<span class="help-block" id="help_phone_number' + (i+1) + '"></span>' +
+                        '</div>' +
+                        '<label for="id_phone_title' + (i+1) + '" class="col-sm-1 control-label">Title ' + (i+1) + '</label>' +
+                        '<div class="col-sm-2">' +
+                            '<select id="id_phone_title' + (i+1) + '" name="phone_title' + (i+1) + '" class="form-control">' +
+								'<option value=""></option>' +
+								'<option value="Owner">Owner</option>' +
+								'<option value="Home">Home</option>' +
+								'<option value="Office">Office</option>' +
+								'<option value="Wife">Wife</option>' +
+								'<option value="Husband">Husband</option>' +
+								'<option value="Dome">Daughter</option>' +
+								'<option value="Son">Son</option>' +
+							'</select>' +
+                        '</div>' +
+						'<label for="id_sms_gateway' + (i+1) + '" class="col-sm-1 control-label">SMS Email</label>' +
+						'<div class="col-sm-2">' +
+							'<select id="id_sms_gateway' + (i+1) + '" name="sms_gateway' + (i+1) + '" class="form-control">' +
+								{% for gateway in sms_email_gateways %}
+									'<option value="{{ gateway.0 }}" >{{ gateway.1 }}</option>' +
+								{% endfor %}
+							'</select>' +
+						'</div>' +
+						'<div class="col-sm-1">' +
+							'<div style="font-size: 11px">Enable sms email:</div>' +
+							'<div>' +
+								'<input id="id_for_sms_email'+ (i+1) +'" name="for_sms_email'+ (i+1) +'" type="checkbox">' +
+							'</div>' +
+						'</div>' +
+                        '<div class="col-sm-1">' +
+                            '<button type="button" onclick="deletePhoneNumberRow(this)" id="remove_phone_number' + (i+1) + '" class="btn btn-xs"><span class="glyphicon glyphicon-minus-sign" style="color: red" aria-hidden="true"></span></button>' +
+                        '</div>' +
+						'<div class="col-sm-1">' +
+							'<button type="button" data-toggle="tooltip" title="Move number to another customer." id="move_phone_number' + (i+1) + '" onclick="movePhoneNumberRow(this)" class="btn btn-xs"><span class="glyphicon glyphicon-phone" style="color: red" aria-hidden="true"></span></button>' +
+						'</div>' +
+                    '</div>');
+            }
+			var $select = $('#id_phone_title' + (i+1)).selectize({
+				delimiter: ',',
+				persist: false,
+				create: function(input) {
+					return {
+						value: input,
+						text: input
+					}
+				}
+			});
+			var selectize = $select[0].selectize;
+			selectize.createItem($existed_titles[i]);
+
+			var $select_sms_email = $('#id_sms_gateway' + (i+1)).selectize();
+			var selectize_gateway = $select_sms_email[0].selectize;
+			selectize_gateway.addItem(parseInt($existed_gateways[i]));
+			var $use = $('#id_for_sms_email'+(i+1)).iCheck({checkboxClass: 'icheckbox_minimal'});
+	        if ($existed_use[i]=='True'){
+				$use.iCheck('check');
+			}
+			$('[name=phone_number'+(i+1)+']').val($existed_phones[i]);
+        }
+        if($('.div_phone_number').length == 1){
+            $('#remove_phone_number1').hide();
+        }
+		$('textarea.expand').focus(function () {
+        $(this).animate({ height: "8em" }, 500);
+    });
+
+        if (getUrlParameter('phone')){
+            $('[name=phone_number1]').val(getUrlParameter('phone'));
+        }
+		$('#id_phone_numbers').bind('input', function () {
+            $(this).val($(this).val().replace(/\ /g, '').replace(/\-/g, '').replace(/\(/g, '').replace(/\)/g, ''));
+		});
+		$('.div_phone_number > .col-sm-2 > .form-control[name^=phone_number]').bind('input', function () {
+            $(this).val($(this).val().replace(/\ /g, '').replace(/\-/g, '').replace(/\(/g, '').replace(/\)/g, ''));
+		});
+        originalForm = $('form').serialize();
+		$('#id_card_number').on('input', function(e) {
+			 $(this).val($(this).val().replace(/\ /g, '').replace(/\-/g, ''));
+		});
+		if ($('#id_exist_card_number').val()) {
+			$('#id_exist_card_type').text(card_types[$('#id_exist_card_number').val()[0]]['type']);
+		}
+		$("#id_card_number").bind('input propertychange',function(){
+            var card_number = $('#id_card_number').val();
+            creditCardValidator(card_number)
+		});
+
+        var charge_type = $("#id_charge_getaway").val();
+        $(".credit_card_number").hide();
+        $("#card_number_update").val('False');
+        $(".credit_card_date").hide();
+        $("#id_card_date_update").val('False');
+        if ($("#id_charge_type").val() == 'CC') {
+            if($('#use_usaepay_2').val() == 'False'){
+                $("#id_charge_getaway option[value=U2]").hide();
+            }
+            $("#id_charge_getaway option[value=CA]").hide();
+            $("#id_charge_getaway option[value=CP]").hide();
+            if (!$('.credit_card').length) {
+                $(".credit_card_number").show();
+                $("#card_number_update").val('True');
+                $(".credit_card_date").show();
+                $("#id_card_date_update").val('True');
+            }
+        }
+        else {
+            if ($("#id_charge_type").val() == 'CA') {
+                $("#id_charge_getaway option[value=A]").hide();
+                $("#id_charge_getaway option[value=U]").hide();
+                $("#id_charge_getaway option[value=U2]").hide();
+                $("#id_charge_getaway option[value=DP]").hide();
+				$("#id_charge_getaway option[value=RF]").hide();
+                if ($('.credit_card').length) {
+                    $('.credit_card').hide();
+                    $('.card_date').hide();
+                    $(".credit_card_number").hide();
+                    $("#card_number_update").val('False');
+                    $(".credit_card_date").hide();
+                    $("#id_card_date_update").val('False');
+                    $('#id_card_number').removeAttr('required');
+                    $('#id_cvv').removeAttr('required');
+                }
+            }
+        }
+        $("#id_charge_type").change(function () {
+            if ($(this).val() == 'CA') {
+                $("#id_charge_getaway option[value=CA]").toggle();
+                $("#id_charge_getaway option[value=CP]").toggle();
+                $("#id_charge_getaway option[value=A]").toggle();
+                $("#id_charge_getaway option[value=U]").toggle();
+                if($('#use_usaepay_2').val() == 'False'){
+                    $("#id_charge_getaway option[value=U2]").hide();
+                }
+                else{
+                    $("#id_charge_getaway option[value=U2]").toggle();
+                }
+                $("#id_charge_getaway option[value=DP]").toggle();
+                $("#id_charge_getaway option[value=RF]").toggle();
+                if ($("#id_charge_getaway option[value=" + charge_type + "]").is(":visible")) {
+                    $("#id_charge_getaway").val(charge_type);
+                }
+                else {
+                    $("#id_charge_getaway").val('CP');
+                }
+                    $('.credit_card').hide();
+                    $('.card_date').hide();
+                    $(".credit_card_number").hide();
+                    $("#card_number_update").val('False');
+                    $(".credit_card_date").hide();
+                    $("#id_card_date_update").val('False');
+                    $('#id_card_number').removeAttr('required');
+                    $('#id_cvv').removeAttr('required');
+
+            }
+            else if ($(this).val() == "CC") {
+                $("#id_charge_getaway option[value=CA]").toggle();
+                $("#id_charge_getaway option[value=CP]").toggle();
+                $("#id_charge_getaway option[value=A]").toggle();
+                $("#id_charge_getaway option[value=U]").toggle();
+                if($('#use_usaepay_2').val() == 'False'){
+                    $("#id_charge_getaway option[value=U2]").hide();
+                }
+                else{
+                    $("#id_charge_getaway option[value=U2]").toggle();
+                }
+                $("#id_charge_getaway option[value=DP]").toggle();
+                $("#id_charge_getaway option[value=RF]").toggle();
+                if ($("#id_charge_getaway option[value=" + charge_type + "]").is(":visible")) {
+                    $("#id_charge_getaway").val(charge_type);
+                }
+                else {
+                    $("#id_charge_getaway").val($('#company_cc_type').val());
+                }
+                if (!$('.credit_card').length) {
+                    $(".credit_card_number").show();
+                    $("#card_number_update").val('True');
+                }
+                else {
+                    $('.credit_card').show();
+                }
+                if (!$('.card_date').length) {
+                    $(".credit_card_date").show();
+                    $("#id_card_date_update").val('True');
+                }
+                else {
+                    $('.card_date').show();
+                }
+
+            }
+        });
+	// block Phone Number for create schedule refill by carrier
+    var $phone_number = $('#id_phone_number').selectize({
+        create: function(input) {
+                $.ajax({
+                    type: 'GET',
+                    url: '{% url "ajax_add_phone_numbers" %}',
+                    data: {
+                        customer: {%if customer %}{{ customer.id }}{% else %}0{% endif %},
+                        number: input
+                    },
+                    dataType: 'json',
+                    success: function (data) {
+                        $('#info_schedules').append("<div class='alert alert-success'>" +
+								"<button type='button' class='close' data-dismiss='alert'>&times;</button>" +
+								"<strong>" + data + "</strong></div>");
+                        }
+                    });
+                    return {value: input,
+						    text: input}},
+        onLoad: function() {
+            var that = this;
+            GETparam('ph', function() {
+                if (this.check()) {
+                    if (!this.used()) {
+                        that.setValue(this.val());
+                        this.used(true);
+                    }
+                } else {
+                    var val_ph = $('#hidden_phone_number').val(),
+                        val_opt = Object.keys(that.options);
+
+                    that.setValue(val_ph);
+
+                    if (val_opt.length == 1 && !val_ph) {
+                        that.setValue(val_opt[0]);
+                        }
+                        }
+                });
+        }
+    });
+	update_$phone_number('{%if customer %}{{ customer.id }}{% else %}0{% endif %}');
+    function update_$phone_number(value) {
+        $.ajax({
+            type: 'GET',
+            url: '{% url "ajax_phone_numbers" %}',
+            data: {
+                id: value
+            },
+            dataType: 'json',
+            success: function(data) {
+                var selectize = $phone_number[0].selectize;
+				selectize.clear();
+                selectize.clearOptions();
+                selectize.load(function(callback) {
+                    callback(data);
+                });
+            }
+        });
+    }
+	{% if customer %}
+	//schedule monthly based on results of carrier
+	$('#create_schedule').on('click', function(){
+		phone_number = $phone_number.val();
+		schedule_monthly_based_on_results_of_carrier(phone_number, $('#create_schedule'), 'CREATE');
+	});
+	});
+	function schedule_monthly_based_on_results_of_carrier(phone_number, button, name_of_button){
+        if(phone_number) {
+			button.html('PROCESSING');
+			$.ajax({
+				url: '{% url "ajax_create_schedule_in_customer" customer.id%}',
+				data: {
+					phone_number: phone_number
+				},
+				success: function (result) {
+					if (result['valid']) {
+						$('#info_schedules').append("<div class='alert alert-success'>" +
+								"<button type='button' class='close' data-dismiss='alert'>&times;</button>" +
+								"<strong>Created successfuly!</strong>Schedule refill: <a href='/autorefill/" + result['id'] + "' target='_blank'>" + result['id'] + "</a></div>");
+						window.open("/autorefill/" + result['id'], '_blank');
+
+					} else {
+						$('#info_schedules').append("<div class='alert alert-danger'>" +
+								"<button type='button' class='close' data-dismiss='alert'>&times;</button>" +
+								"<strong>Erorr!</strong> " + result['error'] + "</div>");
+					}
+				},
+				error: function () {
+					$('#info_schedules').append("<div class='alert alert-danger'>" +
+							"<button type='button' class='close' data-dismiss='alert'>&times;</button>" +
+							"<strong>Erorr!</strong> Cann't create schedule for this number " + phone_number + "</div>");
+				},
+				complete: function () {
+					button.html(name_of_button);
+				}
+			});
+		}
+		else
+		{
+			$('#info_schedules').append("<div class='alert alert-danger'>" +
+							"<button type='button' class='close' data-dismiss='alert'>&times;</button>" +
+							"<strong>Erorr!</strong> Please select number!</div>");
+		}
+    };
+	{% else %}
+		});
+	{% endif %}
+    function creditCardValidator(card_number) {
+        if (card_number.length > 0) {
+            $('#card_type').text(card_types[card_number[0]]['type']);
+            if (card_types[card_number[0]]['card_length'] != card_number.length) {
+                $('#card_number_block').removeClass('has-success').addClass('has-error');
+                $('#help_card_number').text('Number should contains ' + card_types[card_number[0]]['card_length'] + ' digits')
+            }
+            else {
+                $('#card_number_block').removeClass('has-error').addClass('has-success');
+                $('#help_card_number').text('')
+            }
+        }
+        else {
+            $('#card_number_block').removeClass('has-success').removeClass('has-error');
+            $('#card_type').text('');
+            $('#help_card_number').text('')
+        }
+    }
+
+    function updateCard() {
+        $('.credit_card').remove();
+        $(".credit_card_number").show();
+        $("#card_number_update").val('True');
+    }
+    function updateCardDate() {
+        $('.card_date').remove();
+        $(".credit_card_date").show();
+        $("#id_card_date_update").val('True');
+    }
+
+    {% if user.profile.company.can_swipe_card_in_customer %}
+    //swipe card feature
+    var swipe_card_activated = false;
+
+    function swipeCard(){
+        $('#id_charge_type > option[value=\'CC\']').attr('selected', 'selected');
+        if (!$('#id_charge_getaway > option[selected]').val()){
+            $('#id_charge_getaway > option[value=\'{{ user.profile.company.cccharge_type }}\']').attr('selected', 'selected');
+        }
+        updateCard();
+        updateCardDate();
+        swipe_card_activated = true;
+        $('#swipe-card-data').focus();
+        $('.swipe-card').text('Please, swipe card...');
+    }
+
+    $('#swipe-card-data').on('input', function(){
+        if (swipe_card_activated){
+            $('#id_card_number').val($('#swipe-card-data').val().match("\\%B(.*?)\\^")[1]);
+            var first_name = $('#swipe-card-data').val().match("/(.*?)\\^")[1];
+            $('#id_first_name').val(first_name.substr(0,1).toUpperCase() + first_name.substr(1).toLowerCase());
+            $('#id_cc_first_name').val(first_name.substr(0,1).toUpperCase() + first_name.substr(1).toLowerCase());
+            var last_name = $('#swipe-card-data').val().match("\\^(.*?)/")[1];
+            $('#id_last_name').val(last_name.substr(0,1).toUpperCase() + last_name.substr(1).toLowerCase());
+            $('#id_cc_last_name').val(last_name.substr(0,1).toUpperCase() + last_name.substr(1).toLowerCase());
+            var month = $('#swipe-card-data').val().match("=(.*?)\\?")[1].substring(2, 4);
+            if (month[0] == '0'){
+                month = month[1];
+            }
+            var year = $('#swipe-card-data').val().match("=(.*?)\\?")[1].substring(0, 2);
+            $('#id_expiration_month').val(month).change();
+            $('#id_expiration_year').val('20'+year).change();
+            $('.swipe-card').text('Swipe Credit Card');
+            swipe_card_activated = false;
+            $('#id_cvv').tooltip('toggle');
+        }
+    });
+
+    $('#swipe-card-data').on("focusout", function(){
+        if (swipe_card_activated){
+            $('.swipe-card').text('Swipe Credit Card');
+            swipe_card_activated = false;
+        }
+    });
+    {% endif %}
+
+    function saveCustomer(redirectUrl) {
+        var currentForm = $('form').serialize();
+        if(originalForm != currentForm){
+            if (validateForm()) {
+                var r = confirm("Some data were changed. Save changes?");
+                if (r == true) {
+                    $.ajax({
+                        type: "POST",
+                        url: $('#customerForm').attr("action"),
+                        data: $('#customerForm').serialize(),
+                        success: function (data) {
+							data = JSON.parse(data);
+							if(data['status']=='error')	{
+								$('#id_errors').empty().addClass('alert alert-danger');
+								var errors = data['errors'];
+								for(var key in errors){
+									if(errors.hasOwnProperty(key)) {
+										for(var error in data['errors'][key]){
+											$('#id_errors').html($('#id_errors').html() + data['errors'][key][error] + "</br>");
+										}
+									}
+								}
+								$("html, body").animate({ scrollTop: 0 }, "slow");
+							}
+							else{
+								if (window.location.href.indexOf("create")>=0)
+									window.location.href = redirectUrl +  data['id'];
+								else window.location.href = redirectUrl;
+							}
+                        },
+                        dataType: "html"
+                    });
+                    return false;
+                }
+                else {
+                    if (window.location.href.indexOf("create")>=0){
+                        alert("You have to save a new customer before schedule refill or recharge now");
+                        return false;
+                    }
+                    window.location.href = redirectUrl;
+                }
+            }
+            return false;
+        }
+        else {
+                window.location.href = redirectUrl;
+            }
+        return false;
+    }
+
+    function rechargeNow() {
+		if (!validateForm()){
+            return
+        }
+
+        var phones = '';
+        var titles = '';
+		var sms_gateways = '';
+		var sms_email_use = '';
+        var n = $('.div_phone_number').length;
+        for (var i = 1; i <= n; i++){
+            if (i==1){
+                phones += $('[name=phone_number'+i+']').val();
+                titles += $('[name=phone_title'+i+']').val();
+				sms_gateways += $('[name=sms_gateway'+i+']').val();
+				if ($('[name=for_sms_email'+i+']').prop('checked')){
+					sms_email_use += 'True';
+				}
+				else{
+					sms_email_use += 'False';
+				}
+            }
+            else{
+                phones += ',' + $('[name=phone_number'+i+']').val();
+                titles += ',' + $('[name=phone_title'+i+']').val();
+				sms_gateways += ',' + $('[name=sms_gateway'+i+']').val();
+				if ($('[name=for_sms_email'+i+']').prop('checked')){
+					sms_email_use += ',' + 'True';
+				}
+				else{
+					sms_email_use += ',' + 'False';
+				}
+            }
+        }
+        $('#id_phone_numbers').val(phones);
+        $('#id_phone_titles').val(titles);
+        $('#id_phone_gateways').val(sms_gateways);
+        $('#id_phone_sms_emails').val(sms_email_use);
+        $.ajax({
+            type: 'GET',
+            data: {phone_numbers: phones, id: {% if customer %}{{customer.id}}{% else %}0{% endif %}},
+            url: '{% url 'ajax_check_duplicate_number' %}',
+            success: function (data) {
+                if (data['error']){
+                    dialog(data['message']+'Do you want to save it anyway?',
+                        function() {
+							saveCustomer("/manualrefill?cid={{ customer.id }}");
+                        },
+                        function() {
+                            // Do nothing
+                        }
+                    );
+                }
+                else{
+        			saveCustomer("/manualrefill?cid={{ customer.id }}");
+                }
+            }
+        });
+    }
+    function scheduleLater() {
+		if (!validateForm()){
+            return
+        }
+
+        var phones = '';
+        var titles = '';
+		var sms_gateways = '';
+		var sms_email_use = '';
+        var n = $('.div_phone_number').length;
+        for (var i = 1; i <= n; i++){
+            if (i==1){
+                phones += $('[name=phone_number'+i+']').val();
+                titles += $('[name=phone_title'+i+']').val();
+				sms_gateways += $('[name=sms_gateway'+i+']').val();
+				if ($('[name=for_sms_email'+i+']').prop('checked')){
+					sms_email_use += 'True';
+				}
+				else{
+					sms_email_use += 'False';
+				}
+            }
+            else{
+                phones += ',' + $('[name=phone_number'+i+']').val();
+                titles += ',' + $('[name=phone_title'+i+']').val();
+				sms_gateways += ',' + $('[name=sms_gateway'+i+']').val();
+				if ($('[name=for_sms_email'+i+']').prop('checked')){
+					sms_email_use += ',' + 'True';
+				}
+				else{
+					sms_email_use += ',' + 'False';
+				}
+            }
+        }
+        $('#id_phone_numbers').val(phones);
+        $('#id_phone_titles').val(titles);
+        $('#id_phone_gateways').val(sms_gateways);
+        $('#id_phone_sms_emails').val(sms_email_use);
+        $.ajax({
+            type: 'GET',
+            data: {phone_numbers: phones, id: {% if customer %}{{customer.id}}{% else %}0{% endif %}},
+            url: '{% url 'ajax_check_duplicate_number' %}',
+            success: function (data) {
+                if (data['error']){
+                    dialog(data['message']+'Do you want to save it anyway?',
+                        function() {
+                            saveCustomer("/autorefill/create/?cid={{ customer.id }}");
+                        },
+                        function() {
+                            // Do nothing
+                        }
+                    );
+                }
+                else{
+        			saveCustomer("/autorefill/create/?cid={{ customer.id }}");
+                }
+            }
+        });
+    }
+
+    $('#add_another_button').on('click', function(){
+        var numbers_on_form_count = $('.div_phone_number').length+1;
+        $('#div_add_another').before('<div class="form-group div_phone_number">' +
+                    '<label for="id_phone_number' + numbers_on_form_count + '" class="col-sm-2 control-label">Phone ' + numbers_on_form_count + '</label>' +
+                    '<div class="col-sm-2">' +
+                        '<input id="id_phone_number' + numbers_on_form_count + '" name="phone_number' + numbers_on_form_count + '" type="text" class="form-control" value=""/>' +
+                        '<span class="help-block" id="help_phone_number' + numbers_on_form_count + '"></span>' +
+                    '</div>' +
+                    '<label for="id_phone_title' + numbers_on_form_count + '" class="col-sm-1 control-label">Title ' + numbers_on_form_count + '</label>' +
+                    '<div class="col-sm-2">' +
+                    	'<select id="id_phone_title' + numbers_on_form_count + '" name="phone_title' + numbers_on_form_count + '" class="form-control">' +
+							'<option value=""></option>' +
+							'<option value="Owner">Owner</option>' +
+							'<option value="Home">Home</option>' +
+							'<option value="Office">Office</option>' +
+							'<option value="Wife">Wife</option>' +
+							'<option value="Husband">Husband</option>' +
+							'<option value="Dome">Daughter</option>' +
+							'<option value="Son">Son</option>' +
+						'</select>' +
+					'</div>' +
+					'<label for="id_sms_gateway' + numbers_on_form_count + '" class="col-sm-1 control-label">SMS Email</label>' +
+					'<div class="col-sm-2">' +
+						'<select id="id_sms_gateway' + numbers_on_form_count + '" name="sms_gateway' + numbers_on_form_count + '" class="form-control">' +
+							{% for gateway in sms_email_gateways %}
+								'<option value="{{ gateway.0 }}" >{{ gateway.1 }}</option>' +
+							{% endfor %}
+						'</select>' +
+					'</div>' +
+					'<div class="col-sm-1">' +
+						'<div style="font-size: 11px">Enable sms email:</div>' +
+						'<div>' +
+							'<input id="id_for_sms_email'+ numbers_on_form_count +'" name="for_sms_email'+ numbers_on_form_count +'" type="checkbox">' +
+						'</div>' +
+					'</div>' +
+                    '<div class="col-sm-1">' +
+                        '<button type="button" onclick="deletePhoneNumberRow(this)" id="remove_phone_number' + numbers_on_form_count + '" class="btn btn-xs"><span class="glyphicon glyphicon-minus-sign" style="color: red" aria-hidden="true"></span></button>' +
+                    '</div>' +
+					'<div class="col-sm-1">' +
+						'<button type="button" data-toggle="tooltip" title="Move number to another customer." id="move_phone_number' + numbers_on_form_count + '" onclick="movePhoneNumberRow(this)" class="btn btn-xs"><span class="glyphicon glyphicon-phone" style="color: red" aria-hidden="true"></span></button>' +
+					'</div>' +
+				'</div>');
+				$('.div_phone_number > .col-sm-2 > .form-control[name^=phone_number]').bind('input', function () {
+					$(this).val($(this).val().replace(/\ /g, '').replace(/\-/g, '').replace(/\(/g, '').replace(/\)/g, ''));
+				});
+				var $select = $('#id_phone_title' + numbers_on_form_count).selectize({
+					delimiter: ',',
+					persist: false,
+					create: function(input) {
+						return {
+							value: input,
+							text: input
+						}
+					}
+				});
+				var $select_sms_email = $('#id_sms_gateway' + numbers_on_form_count).selectize();
+				$('#id_for_sms_email'+numbers_on_form_count).iCheck({checkboxClass: 'icheckbox_minimal'});
+        $('#remove_phone_number1').show();
+		$('#move_phone_number1').show();
+    });
+
+    $('.save-customer-button').on('click', function(){
+        if (!validateForm()){
+            return
+        }
+
+        var phones = '';
+        var titles = '';
+		var sms_gateways = '';
+		var sms_email_use = '';
+        var n = $('.div_phone_number').length;
+        for (var i = 1; i <= n; i++){
+            if (i==1){
+                phones += $('[name=phone_number'+i+']').val();
+                titles += $('[name=phone_title'+i+']').val();
+				sms_gateways += $('[name=sms_gateway'+i+']').val();
+				if ($('[name=for_sms_email'+i+']').prop('checked')){
+					sms_email_use += 'True';
+				}
+				else{
+					sms_email_use += 'False';
+				}
+            }
+            else{
+                phones += ',' + $('[name=phone_number'+i+']').val();
+                titles += ',' + $('[name=phone_title'+i+']').val();
+				sms_gateways += ',' + $('[name=sms_gateway'+i+']').val();
+				if ($('[name=for_sms_email'+i+']').prop('checked')){
+					sms_email_use += ',' + 'True';
+				}
+				else{
+					sms_email_use += ',' + 'False';
+				}
+            }
+        }
+        $('#id_phone_numbers').val(phones);
+        $('#id_phone_titles').val(titles);
+        $('#id_phone_gateways').val(sms_gateways);
+        $('#id_phone_sms_emails').val(sms_email_use);
+        $.ajax({
+            type: 'GET',
+            data: {phone_numbers: phones, id: {% if customer %}{{customer.id}}{% else %}0{% endif %}},
+            url: '{% url 'ajax_check_duplicate_number' %}',
+            success: function (data) {
+                if (data['error']){
+                    dialog(data['message']+'Do you want to save it anyway?',
+                        function() {
+                            $('#customerForm').submit();
+                        },
+                        function() {
+                            // Do nothing
+                        }
+                    );
+                }
+                else{
+                    $('#customerForm').submit();
+                }
+            }
+        });
+    });
+    function validateForm() {
+        if ($('#id_charge_getaway').val()=='DP'){
+            var without_errors = true;
+            if (!$('#id_address').val()){
+                $('#id_address').parent().addClass('has-error');
+                $('#id_address').tooltip('toggle');
+                without_errors = false;
+            }
+            if (!$('#id_zip').val()){
+                $('#id_zip').parent().addClass('has-error');
+                $('#id_zip').attr("data-toggle", "tooltip");
+                $('#id_zip').attr("title", "Required for DollarPhone");
+                $('#id_zip').tooltip('toggle');
+                without_errors = false;
+            }
+            if (!$('#id_city').val()){
+                $('#id_city').parent().addClass('has-error');
+                $('#id_city').attr("data-toggle", "tooltip");
+                $('#id_city').attr("title", "Required for DollarPhone");
+                $('#id_city').tooltip('toggle');
+                without_errors = false;
+            }
+            if (!$('#id_state').val()){
+                $('#id_state').parent().addClass('has-error');
+                $('#id_state').attr("data-toggle", "tooltip");
+                $('#id_state').attr("title", "Required for DollarPhone");
+                $('#id_state').tooltip('toggle');
+                 without_errors = false;
+            }
+//            if (!$('#id_cvv').val()){
+//                $('#id_cvv').parent().addClass('has-error');
+//                $('#id_cvv').tooltip('toggle');
+//                 without_errors = false;
+//            }
+            return without_errors;
+        }
+        var phones = '';
+        var n = $('.div_phone_number').length;
+        for (var i = 1; i <= n; i++){
+            if (!$('[name=phone_number'+i+']').val().match(/^\d{10,10}$/)){
+                $('#help_phone_number'+i).text("Please enter 10 digit phone number.").css('color', 'red');
+                $('#id_phone_number'+i).focus();
+                return false;
+            }
+            else{
+                $('#help_phone_number'+i).text("");
+            }
+        }
+        if ($('#id_email_status').attr('checked')) {
+            var email_id = document.forms[1]["primary_email"].value;
+            if (!email_id) {
+                $('#div_primary_email').addClass("has-error");
+                $('#help_primary_email').text('Email Address is mandatory when "Email Transaction Status" option is checked.');
+                $('#id_primary_email').focus();
+                return false;
+            }
+        }
+        return true;
+    }
+</script>
+{% endblock %}

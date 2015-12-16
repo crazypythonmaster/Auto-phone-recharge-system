@@ -1,0 +1,140 @@
+{% extends 'core/base.html' %}
+{% block add_css %}
+    <link href="{{ STATIC_URL }}css/datatables/dataTables.bootstrap.css" rel="stylesheet" type="text/css"/>
+{% endblock %}
+{% block content %}
+    <section class="content-header">
+        <h1>
+            Manage Customers
+            <small>Import Customers Here.</small>
+        </h1>
+        <ol class="breadcrumb">
+            <li><a href="{% url 'home' %}"><i class="fa fa-dashboard"></i> Home</a></li>
+            <li><a href="{% url 'customer_list' %}">Customers</a></li>
+            <li class='active'>Import Customers</li>
+        </ol>
+    </section>
+    <section class="content">
+        <div class="box box-primary">
+            <div class="box-header">
+                <h3 class="box-title">Import Customers</h3>
+            </div>
+            <div class="box-body">
+                <form class="form-horizontal" role="form" enctype="multipart/form-data" method="post" action=".">
+                    {% csrf_token %}
+                    <input type="hidden" value="{{ confirm }}" id="id_confirm" name="confirm"/>
+                    {% if not confirm %}
+                        <div class="form-group">
+                            <label for="id_file" class="col-sm-2 control-label">Customer Import File</label>
+                            <div class="col-sm-8">
+                                <input type="file" id="id_file" name="file" required/>
+                                <p class="help-block">Select the CSV that contains a list of customers .
+                                    [<a href="{% url 'customer_export' %}?template=true">Download Template</a>]
+                                </p>
+                            </div>
+                        </div>
+                        <div class="box-footer">
+                            <div class="col-sm-offset-2">
+                                <button type="submit" class="btn btn-primary">Import</button>
+                                <a href="{% url 'customer_list' %}" class="btn btn-default">Cancel</a>
+                            </div>
+                        </div>
+                    {% else %}
+                        <input type="hidden" value="{{ cache_id }}" id="id_cache_id" name="cache_id"/>
+                        <label class="control-label">Are you sure you want to import the below customers?</label>
+                        <table class="table table-condensed" id="datatable">
+                            <thead>
+                                <tr>
+                                    <th>First Name</th>
+                                    <th>Middle Name</th>
+                                    <th>Last Name</th>
+                                    <th>Primary Email</th>
+                                    <th>Phone Numbers</th>
+                                    <th>SellerCloud Account ID</th>
+                                    <th>Address</th>
+                                    <th>City</th>
+                                    <th>State</th>
+                                    <th>Zip</th>
+                                    <th>Charge Type</th>
+                                    <th>Charge Gateway</th>
+                                    <th>Card Number</th>
+                                    <th>Authorize ID</th>
+                                    <th>USAePay customer ID</th>
+                                    <th>USAePay CustID</th>
+                                    <th>Selling Price Level</th>
+                                    <th>Customer Discount</th>
+                                    <th>Taxable</th>
+                                    <th>Precharge SMS</th>
+                                    <th>Email Success</th>
+                                    <th>Send Status</th>
+                                    <th>Send Pin PreRefill</th>
+                                    <th>Group SMS</th>
+                                    <th>Enabled</th>
+                                    <th>Notes</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                            {% for customer in customers %}
+                                <tr>
+                                    <td>{{ customer.first_name|default_if_none:"" }}</td>
+                                    <td>{{ customer.middle_name|default_if_none:"" }}</td>
+                                    <td>{{ customer.last_name|default_if_none:"" }}</td>
+                                    <td>{{ customer.primary_email|default_if_none:"" }}</td>
+                                    <td>{{ customer.phone_numbers|default_if_none:"" }}</td>
+                                    <td>{{ customer.sellercloud_account_id|default_if_none:"" }}</td>
+                                    <td>{{ customer.address|default_if_none:"" }}</td>
+                                    <td>{{ customer.city|default_if_none:"" }}</td>
+                                    <td>{{ customer.state|default_if_none:"" }}</td>
+                                    <td>{{ customer.zip|default_if_none:"" }}</td>
+                                    <td>{{ customer.charge_type|default_if_none:"" }}</td>
+                                    <td>{{ customer.charge_gateway|default_if_none:"" }}</td>
+                                    <td>{{ customer.card_number|default_if_none:"" }}</td>
+                                    <td>{{ customer.authorize_id|default_if_none:"" }}</td>
+                                    <td>{{ customer.usaepay_customer_id|default_if_none:"" }}</td>
+                                    <td>{{ customer.usaepay_custid|default_if_none:"" }}</td>
+                                    <td>{{ customer.selling_price_level|default_if_none:"" }}</td>
+                                    <td>{{ customer.customer_discount|default_if_none:"" }}</td>
+                                    <td>{{ customer.taxable|default_if_none:"" }}</td>
+                                    <td>{{ customer.precharge_sms|default_if_none:"" }}</td>
+                                    <td>{{ customer.email_success_refill|default_if_none:"" }}</td>
+                                    <td>{{ customer.email_success_charge|default_if_none:"" }}</td>
+                                    <td>{{ customer.send_status|default_if_none:"" }}</td>
+                                    <td>{{ customer.send_pin_prerefill|default_if_none:"" }}</td>
+                                    <td>{{ customer.group_sms|default_if_none:"" }}</td>
+                                    <td>{{ customer.enabled|default_if_none:"" }}</td>
+                                    <td>{{ customer.notes|default_if_none:"" }}</td>
+                                </tr>
+                            {% endfor %}
+                            </tbody>
+                        </table>
+                        <div class="box-footer">
+                            <div class="col-sm-offset-2">
+                                <button type="submit" class="btn btn-primary">Confirm Import</button>
+                                <a href="{% url 'customer_list' %}" class="btn btn-default">Cancel</a>
+                            </div>
+                        </div>
+                    {% endif %}
+                </form>
+            </div>
+        </div>
+
+    </section>
+{% endblock %}
+{% block body_js %}
+    <script src="{{ STATIC_URL }}js/datatables/jquery.dataTables.js" type="text/javascript"></script>
+    <script src="{{ STATIC_URL }}js/datatables/dataTables.bootstrap.js" type="text/javascript"></script>
+    <script type="text/javascript">
+        $(document).ready(function() {
+            $('.tooltip-activate').tooltip();
+            $('#__customers').addClass("active");
+            $('#datatable').dataTable({
+                "bPaginate": true,
+                "bInfo": true,
+                "bAutoWidth": false,
+                "bLengthChange": false,
+                "bFilter": false,
+                "bSort": false
+            });
+        })
+    </script>
+{% endblock %}

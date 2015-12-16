@@ -1,0 +1,26 @@
+from .local import *
+from defaults import INSTALLED_APPS
+
+DEBUG = True
+
+TEMPLATE_DEBUG = DEBUG
+
+TEST_MODE = True
+
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': 'ppars_b',
+        'USER': 'root',
+        'PASSWORD': '',
+        'HOST': '127.0.0.1',
+    }
+}
+
+INSTALLED_APPS += (
+    'debug_toolbar',
+)
+
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+
+print(__file__, 'settings_local', 'loaded')

@@ -1,0 +1,254 @@
+{% extends 'core/base.html' %}
+{% load tz %}
+{% block add_css %}
+    <link href="{{ STATIC_URL }}css/datatables/dataTables.bootstrap.css" rel="stylesheet" type="text/css" />
+    <link href="{{ STATIC_URL }}css/selectize.bootstrap3.css" rel="stylesheet" type="text/css">
+    <link href="{{ STATIC_URL }}css/selectize.css" rel="stylesheet" type="text/css">
+{% endblock %}
+{% block content %}
+	<section class="content-header">
+        <h1>
+            Manage Unused Pins
+			<a class="btn btn-primary" href="{% url 'unusedpin_create' %}"><i class="fa fa-plus"></i> Add Unused Pin</a>
+			<a class="btn btn-info" href="{% url 'unusedpin_import' %}"><i class="fa fa-upload"></i> Import Unused Pins</a>
+			<a class="btn" id="verify_pin">Verify all pins of Red Pocket</a>
+        </h1>
+        <ol class="breadcrumb">
+			<li><a href="{% url 'home' %}">Home</a></li>
+			<li class="active">Unused Pins</li>
+        </ol>
+    </section>
+    {% if messages %}
+        {% for message in messages %}
+    	    <div class="alert 
+	            {% if message.tags == 'INFO' %}alert-info {% elif message.tags == 'success' %} alert-success {% elif message.tags == 'error' %} alert-danger {% else %} alert-warning {% endif %}
+            alert-dismissable">
+	            <button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>
+	            {{ message }}
+	        </div>
+        {% endfor %}
+    {% endif %}
+    <section class="content" style="overflow: visible">
+		<div class="box">
+			<ul class="nav nav-tabs filters">
+            <li role="presentation" class="active"><a href="#" filter="all">All</a></li>
+            <li role="presentation"><a href="#" filter="pinreport">Pin report note</a></li>
+        </ul>
+			<div class="box-body">
+				<button class="btn btn-default" onclick="markUsed();">Mark as Used</button>
+				<button class="btn btn-default" onclick="markUnused();">Mark as Unused</button>
+				<table class="table table-condensed" id="datatable">
+				  <thead>
+					<tr>
+					  <th><input type="checkbox" id="id_select_all"/></th>
+					  <th>Pin</th>
+					  <th>Plan</th>
+					  <th>Used</th>
+					  <th>Used By</th>
+					  <th>Notes</th>
+					  <th>Created On</th>
+					  <th>Updated On</th>
+					</tr>
+				  </thead>
+				  <tfoot class="hide-if-no-paging">
+					<tr>
+						<th></th>
+						<th>
+						</th>
+						<th>
+							<select class="form-control" id="filter_plans">
+								<option value=''>All</option>
+							</select>
+						</th>
+						<th>
+							<select class="form-control" id="status-filter">
+								<option value=''>All</option>
+								<option value='True'>Used</option>
+								<option value=False>Unused</option>
+							</select>
+						</th>
+						<th></th>
+						<th></th>
+						<th></th>
+					</tr>
+				  </tfoot>
+				 </table>
+			</div>
+		</div>
+    </section>
+{% endblock %}
+{% block body_js %}
+	<script src="{{ STATIC_URL }}js/datatables/jquery.dataTables.js" type="text/javascript"></script>
+	<script src="{{ STATIC_URL }}js/datatables/dataTables.bootstrap.js" type="text/javascript"></script>
+	<script src="{{ STATIC_URL }}js/selectize.js" type="text/javascript"></script>
+	<script src="{{ STATIC_URL }}js/fnGetColumnData.js" type="text/javascript"></script>
+    <script type="text/javascript">
+      $(document).ready(function() {
+		$('.tooltip-activate').tooltip();
+		$('#__pin ul').css('display', 'block');
+		$('#__pin').addClass( "active" );
+		$('#__unusedpins').addClass( "active" );
+		var table = $('#datatable').dataTable({
+			"fnDrawCallback": function( oSettings ) {
+			  $.ajax({
+				  url: '/ajax_unused_pins_plan_list',
+				  success: function(result){
+					  var current_plan_filter_value = $('#filter_plans').val();
+					  $('#filter_plans').html('<option value="">All</option>');
+					  for (var i = 0; i < result.length; i++){
+						  $('#filter_plans').append('<option value="' + result[i]['id'] + '">' + result[i]['name'] + '</option>')
+					  }
+					  $('#filter_plans').val(current_plan_filter_value);
+				  }
+			  })
+			},
+			"bServerSide": true,
+            "sAjaxSource": '/ajax_unused_pins',
+            "bProcessing": true,
+            "bLengthChange": true,
+            "bFilter": true,
+            "bInfo": true,
+            "bAutoWidth": false,
+			"aoColumnDefs" : [
+				{
+					"mRender": function ( data, type, row ) {
+						if (data == true)
+							row.status_display = '<span class="fa fa-check-circle text-success"></span>';
+						else
+							row.status_display = '<span class="fa fa-minus-circle text-danger"></span>';
+						row.status_filter = data;
+						if (type === 'display') {
+							return row.status_display;
+						}
+						else if (type === 'filter') {
+							return row.status_filter;
+						}
+						  // 'sort', 'type' and undefined all just use the integer
+						return row.status_filter;
+
+					},
+					"aTargets": [3]
+				},
+				{
+      				"aTargets": [0,1,2,3,4,5],
+				    "bSortable": false
+			    }
+	        ],
+            "aaSorting": [[ 6, "desc" ]]
+
+		});
+		  $('.filters a').on('click', function() {
+            $(this).parent().parent().find('.active').removeClass('active');
+            switch($(this).attr('filter')) {
+                case 'all':
+                    table.fnFilter("", 5);
+			            $('input[type="checkbox"]').prop('checked', true);
+					break;
+                case 'pinreport':
+                    table.fnFilter("/pin-report", 5);
+			            $('input[type="checkbox"]').prop('checked', false);
+                    break;
+            }
+            $(this).parent().addClass('active');
+        });
+		$('#filter_plans', this).change( function () {
+            table.fnFilter( $(this).val(), 3);
+        } );
+		$('#status-filter', this).change( function () {
+            table.fnFilter( $(this).val(), 4);
+        } );
+
+
+//		  $('#filter_plans', this).change(function() {
+//			  table.fnFilter( $(this).val(), 3);
+//		  });
+//		  var plan = $('#filter_plans').selectize({
+//			  create: true,
+//			  sortField: 'text'
+//		  });
+		  var columnData = table.fnGetColumnData(2);
+		  for(var elem in columnData)
+			  plan[0].selectize.addOption({value: columnData[elem], text: columnData[elem].replace(/&amp;/g, '&')});
+		  $('#verify_pin').on('click', function () {
+			  $(this).html('<img src="{{ STATIC_URL }}img/preloader.gif"/>');
+			  $.ajax({
+				  type: "GET",
+				  url: '{% url "ajax_get_pin_status" %}',
+				  data: {
+					  type: 'LIST'
+				  },
+				  dataType: "json",
+				  success: function (data) {
+					  console.log(data);
+					  alert(data['message']);
+				  },
+				  error: function (){
+					  alert('Not active!')
+				  },
+				  complete: function () {
+					  $('#verify_pin').html('Verify all pins of Red Pocket');
+				  }
+			  });
+		  });
+
+    	$('#id_select_all').on('ifChecked', function(){
+			$('input[type="checkbox"]').prop('checked', true);
+		});
+        $('#id_select_all').on('ifUnchecked', function(){
+            $('input[type="checkbox"]').prop('checked', false);
+        });
+	});
+
+	function markUsed() {
+		var note = '';
+		note = prompt('Do you want to add note to pin?');
+		$('.selected_field').toArray().forEach(function (i, val) {
+			pin_id = '';
+			if ($(i).prop('checked')) {
+				pin_id = $(i).prev().val();
+                makeRequest(pin_id, 'used', note)
+			}
+		});
+		$('input[type="checkbox"]').prop('checked', false);
+        location.reload();
+	}
+
+	function makeRequest(pin_id, button, note){
+		$.ajax({
+			type: "GET",
+			url: "{% url 'ajax_mark_unusedpin' %}",
+			data: {
+				button: button,
+				note: note,
+				pin_id: pin_id
+			},
+			success: function (data) {
+				if ('used' == button){
+					$('#used_' + pin_id).html('<span class="fa fa-check-circle text-success"></span>');
+				}
+				else if('unused' == button){
+					$('#used_' + pin_id).html('<span class="fa fa-minus-circle text-danger"></span>');
+				}
+				if (note) {
+					$('#note_' + pin_id).text(note)
+				}
+			}
+		});
+
+	}
+
+	function markUnused() {
+		var note = '';
+		note = prompt('Do you want to add note to pin?');
+		$('.selected_field').toArray().forEach(function (i, val) {
+			pin_id = '';
+			if ($(i).prop('checked')) {
+				pin_id = $(i).prev().val();
+				makeRequest(pin_id, 'unused', note)
+			}
+		});
+		$('input[type="checkbox"]').prop('checked', false);
+        location.reload();
+	}
+    </script>
+{% endblock %}

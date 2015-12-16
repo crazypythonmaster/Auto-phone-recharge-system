@@ -1,0 +1,11 @@
+.box{
+    padding: 10px;
+}
+
+#search > thead > tr > th:first-child{
+    width: 50px
+}
+
+#search > tfoot > tr > th:first-child{
+    width: 50px
+}

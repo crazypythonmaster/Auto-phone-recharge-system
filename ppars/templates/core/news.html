@@ -1,0 +1,75 @@
+{% extends 'core/base.html' %}
+{% load tz %}
+{% block add_css %}
+    <link href="{{ STATIC_URL }}css/datatables/dataTables.bootstrap.css" rel="stylesheet" type="text/css" />
+    <link href="{{ STATIC_URL }}css/search.css" rel="stylesheet" type="text/css" />
+{% endblock %}
+{% block content %}
+    <section class="content-header">
+        <h1>
+            Updates
+        </h1>
+        <ol class="breadcrumb">
+            <li><a href="{% url 'home' %}"><i class="fa fa-dashboard"></i> Home</a></li>
+
+        </ol>
+    </section>
+    <section class="content">
+        <div class="box">
+            <table class="table" id="updates">
+                <thead>
+                    <tr>
+                        <th>Title</th>
+                        <th>Date</th>
+                    </tr>
+                </thead>
+                <tfoot>
+                    <tr>
+                        <th>
+                            <select class="form-control" id="type-filter">
+								<option value="">All</option>
+								<option value="BF">Bug Fix</option>
+								<option value="NF">New Features</option>
+							    <option value="IN">Instructions/FAQ</option>
+							    <option value="OP">Optional Paid Futures</option>
+							    <option value="UU">Urgent Updates</option>
+                            </select>
+                        </th>
+                        <th></th>
+                    </tr>
+                </tfoot>
+                <tbody>
+
+                </tbody>
+            </table>
+        </div>
+	</section>
+
+</div>
+{% endblock %}
+
+{% block body_js %}
+    <script src="{{ STATIC_URL }}js/datatables/jquery.dataTables.js" type="text/javascript"></script>
+	<script src="{{ STATIC_URL }}js/datatables/dataTables.bootstrap.js" type="text/javascript"></script>
+    <script type="text/javascript">
+        $(document).ready( function () {
+            var table = $('#updates').dataTable({
+            "bServerSide": true,
+            "sAjaxSource": '/ajax_news/',
+            "bProcessing": true,
+			"bLengthChange": true,
+			"bFilter": true,
+            "bInfo": true,
+			"bAutoWidth": true,
+            "aaSorting": [[ 1, "asc" ]],
+            "aoColumnDefs": [
+                { "bSortable": false, "aTargets": [ 0 ] },
+                { "bSortable": true, "aTargets": [ 1 ] }
+                ]
+            });
+            $('#type-filter', this).change( function () {
+                table.fnFilter( $(this).val(), 0);
+            } );
+        });
+    </script>
+{% endblock %}

@@ -1,0 +1,598 @@
+{% extends 'core/base.html' %}
+	
+{% block add_css %}
+	<link rel="stylesheet" href="{{ STATIC_URL }}css/morris/morris.css" />
+    <link rel="stylesheet" href="{{ STATIC_URL }}css/home.css" />
+    <link rel="stylesheet" type="text/css" href="{{ STATIC_URL }}css/the-modal.css" media="all" />
+    <link href="{{ STATIC_URL }}css/datatables/dataTables.bootstrap.css" rel="stylesheet" type="text/css" />
+{% endblock %}
+{% block content %}
+      <!-- Main component for a primary marketing message or call to action -->
+    <section class="content-header">
+        <h1>
+            Dashboard
+            <small>Control panel</small>
+        </h1>
+        <ol class="breadcrumb">
+            <li><a href=""><i class="fa fa-dashboard"></i> Home</a></li>
+            <li class="active">Dashboard</li>
+        </ol>
+    </section>
+
+    <!-- Main content -->
+    <section class="content">
+		<div class="row">
+            {% if user.profile.profit_restriction %}
+			<div class="col-lg-3 col-xs-6">
+				<!-- small box -->
+				<div class="small-box bg-yellow">
+					<div class="inner">
+						<h3 id='customers'>
+							0
+						</h3>
+						<p>
+							{% if user.is_superuser %}
+								Stores
+							{% else%}
+							 	Customers
+							{% endif %}
+						</p>
+					</div>
+					<div class="icon">
+						<i class="ion ion-person-stalker"></i>
+					</div>
+					<a href="{% url 'customer_list' %}" class="small-box-footer">
+						More info <i class="fa fa-arrow-circle-right"></i>
+					</a>
+				</div>
+			</div><!-- ./col -->		
+			<div class="col-lg-3 col-xs-6">
+				<!-- small box -->
+				<div class="small-box bg-aqua">
+					<div class="inner">
+						<h3 id='total_trans'>
+							0
+						</h3>
+						<p>
+							Total Transactions
+						</p>
+					</div>
+					<div class="icon">
+						<i class="ion ion-arrow-swap"></i>
+					</div>
+					<a href="{% url 'transaction_list' %}" class="small-box-footer">
+						More info <i class="fa fa-arrow-circle-right"></i>
+					</a>
+				</div>
+			</div><!-- ./col -->
+            {% endif %}
+			<div class="col-lg-3 col-xs-6">
+				<!-- small box -->
+				<div class="small-box bg-green">
+					<div class="inner">
+						<h3 id='trans_success'>
+							0<sup style="font-size: 20px">%</sup>
+						</h3>
+						<p>
+							Transaction Success Rate
+						</p>
+					</div>
+					<div class="icon">
+						<i class="ion ion-stats-bars"></i>
+					</div>
+					<!--<a href="#" class="small-box-footer">-->
+						<!--More info <i class="fa fa-arrow-circle-right"></i>-->
+					<!--</a>-->
+				</div>
+			</div><!-- ./col -->
+            {% if user.profile.profit_restriction %}
+			<div class="col-lg-3 col-xs-6">
+				<!-- small box -->
+				<div class="small-box bg-red">
+					<div class="inner tooltip-activate" data-toggle="tooltip"
+							data-placement="bottom"
+							title="Update Plan Discounts to get accurate profits.">
+						<h3 id='profits'>
+							$0
+						</h3>
+						<p>
+							Total Profits
+						</p>
+					</div>
+					<div class="icon">
+						<i class="ion ion-cash"></i>
+					</div>
+					<!--<a href="#" class="small-box-footer">-->
+						<!--More info <i class="fa fa-arrow-circle-right"></i>-->
+					<!--</a>-->
+				</div>
+			</div><!-- ./col -->
+		    {% endif %}
+        </div><!-- /.row -->
+        {% if show_updates %}
+        <div id="last_updates" class="row">
+            <div class="col-lg-3 col-xs-6">
+				<!-- small box -->
+				<div class="small-box bg-maroon">
+					<div class="inner" data-placement="bottom">
+						<p>
+							Last Updates
+						</p>
+                        {% for last_update in last_updates %}
+                            <h5>
+                                <a class="updates_news" href="{% url 'news_detail' last_update.id %}" target="_blank">
+                                {% if last_update.title|length >= 19 %}
+                                    {{ last_update.title|truncatechars:19 }}...
+                                {% else %}
+                                    {{ last_update.title }}
+                                {% endif %}
+                                </a>
+                            </h5>
+                        {% endfor %}
+					</div>
+                    <div class="icon">
+						<span onclick="$.get('/close_updates'); $('#last_updates').hide()" class="glyphicon glyphicon-remove x-button" aria-hidden="true"></span>
+					</div>
+					<a href="/news" target="_blank" class="small-box-footer">
+						More info <i class="fa fa-arrow-circle-right"></i>
+					</a>
+				</div>
+			</div><!-- ./col -->
+        </div>
+        {% endif %}
+        <div class="row">
+            <div class="col-md-6">
+                <div class="box box-primary">
+                    <div class="box-header">
+                        <h3 class="box-title">Getting Started</h3>
+                    </div>
+                    <div class="box-body">
+                        <p>The Pre-Paid Autorefill System is a prepaid phone pin generation and refill system that covers popular cellular service providers such as Red Pocket, Page Plus Cellular and so on. You can either schedule a recharge or do it anytime manually. The system comes preloaded with all the carriers and plans to be found on this planet. This means that you are ready to start refilling with your first logon, ofcourse you do need to update your profile first.</p>
+                        <p>Start exploring by adding your first customer here <a class="btn btn-primary" href="{% url 'customer_create' %}" role="button">Add a Customer &raquo;</a></p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="box box-info">
+                    <div class="box-header">
+                        <h3 class="box-title">Refills Scheduled for the day</h3>
+                    </div>
+                    <div class="box-body">
+                        <div class="table-responsive">
+                            <table class="table table-condensed">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Customer</th>
+                                        <th>Phone Number</th>
+                                        <th>Plan</th>
+                                        <th>Schedule</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                {% for autorefill in autorefill_list %}
+                                    <tr>
+                                        <td>{{ autorefill.id }}</td>
+                                        <td>{{ autorefill.customer }}</td>
+                                        <td>{{ autorefill.phone_number }}</td>
+                                        <td>{{ autorefill.plan }}</td>
+                                        <td>{{ autorefill.get_schedule_display }}</td>
+                                    </tr>
+                                {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+		<div class="row">
+			<div class="col-md-6">
+				<!-- DONUT CHART -->
+				<div class="box box-danger">
+					<div class="box-header">
+						<h3 class="box-title">Pin Usage for the month</h3>
+					</div>
+					<div class="box-body chart-responsive">
+						<div class="chart" id="sales-chart" style="height: 300px; position: relative;"></div>
+					</div><!-- /.box-body -->
+				</div><!-- /.box -->
+
+			</div><!-- /.col (LEFT) -->
+			<div class="col-md-6">
+				<!-- LINE CHART -->
+				<div class="box box-info">
+					<div class="box-header">
+						<h3 class="box-title">Transaction Summary for the month</h3>
+					</div>
+					<div class="box-body chart-responsive">
+						<div class="chart" id="line-chart" style="height: 300px;"></div>
+					</div><!-- /.box-body -->
+				</div><!-- /.box -->
+			</div><!-- /.col (RIGHT) -->
+		</div><!-- /.row -->
+        <div class="row">
+            <div class="col-md-6">
+                <div class="box box-danger">
+					<div class="box-header">
+						<h3 class="box-title">Selling prices amount</h3>
+					</div>
+					<div class="box-body chart-responsive">
+                            <table id="selling-prices" class="table">
+                                <thead>
+                                <th>For:</th>
+                                <th>Amount</th>
+                                <th>Need pins</th>
+                                </thead>
+                                <tr>
+                                    <td>
+                                        <h4><small>Today:</small></h4>
+                                    </td>
+                                    <td>
+                                        <h5>${{ sellingprices.0 }}</h5>
+                                    </td>
+                                    <td>
+                                        <a class="trigger" href="#"><div id="pinday1"></div></a>
+                                        <div class="modal panel panel-primary" id="terms-of-service1" style="display: none">
+                                            <div class="panel-heading">
+                                                <h3 class="panel-title">
+                                                    Today.
+                                                <a href="#" class="close">×</a>
+                                                </h3>
+                                            </div>
+                                            <div class="panel-body" id='pin_report1'></div>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <h4><small>Tomorrow:</small></h4>
+                                    </td>
+                                    <td>
+                                        <h5>${{ sellingprices.1 }}</h5>
+                                    </td>
+                                    <td>
+                                        <a class="trigger" href="#"><div id="pinday2"></div></a>
+                                        <div class="modal panel panel-primary" id="terms-of-service2" style="display: none">
+                                            <div class="panel-heading">
+                                                <h3 class="panel-title">
+                                                    Pins for 2 days.
+                                                <a href="#" class="close">×</a>
+                                                </h3>
+                                            </div>
+                                            <div class="panel-body" id='pin_report2'></div>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <h4><small>Three days:</small></h4>
+                                    </td>
+                                    <td>
+                                        <h5>${{ sellingprices.2 }}</h5>
+                                    </td>
+                                    <td>
+                                        <a class="trigger" href="#"><div id="pinday3"></div></a>
+                                        <div class="modal panel panel-primary" id="terms-of-service3" style="display: none">
+                                            <div class="panel-heading">
+                                                <h3 class="panel-title">
+                                                    Pins for 3 days.
+                                                <a href="#" class="close">×</a>
+                                                </h3>
+                                            </div>
+                                            <div class="panel-body" id='pin_report3'></div>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <h4><small>Four days:</small></h4>
+                                    </td>
+                                    <td>
+                                        <h5>${{ sellingprices.3 }}</h5>
+                                    </td>
+                                    <td>
+                                        <a class="trigger" href="#"><div id="pinday4"></div></a>
+                                        <div class="modal panel panel-primary" id="terms-of-service4" style="display: none">
+                                            <div class="panel-heading">
+                                                <h3 class="panel-title">
+                                                    Pins for 4 days.
+                                                <a href="#" class="close">×</a>
+                                                </h3>
+                                            </div>
+                                            <div class="panel-body" id='pin_report4'></div>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <h4><small>Five days:</small></h4>
+                                    </td>
+                                    <td>
+                                        <h5>${{ sellingprices.4 }}</h5>
+                                    </td>
+                                    <td>
+                                        <a class="trigger" href="#"><div id="pinday5"></div></a>
+                                        <div class="modal panel panel-primary" id="terms-of-service5" style="display: none">
+                                            <div class="panel-heading">
+                                                <h3 class="panel-title">
+                                                    Pins for 5 days.
+                                                <a href="#" class="close">×</a>
+                                                </h3>
+                                            </div>
+                                            <div class="panel-body" id='pin_report5'></div>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <h4><small>Six days:</small></h4>
+                                    </td>
+                                    <td>
+                                        <h5>${{ sellingprices.5 }}</h5>
+                                    </td>
+                                    <td>
+                                        <a class="trigger" href="#"><div id="pinday6"></div></a>
+                                        <div class="modal panel panel-primary" id="terms-of-service6" style="display: none">
+                                            <div class="panel-heading">
+                                                <h3 class="panel-title">
+                                                    Pins for 6 days.
+                                                <a href="#" class="close">×</a>
+                                                </h3>
+                                            </div>
+                                            <div class="panel-body" id='pin_report6'></div>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <h4><small>Week:</small></h4>
+                                    </td>
+                                    <td>
+                                        <h5>${{ sellingprices.6 }}</h5>
+                                    </td>
+                                    <td>
+                                        <a class="trigger" href="#"><div id="pinday7"></div></a>
+                                        <div class="modal panel panel-primary" id="terms-of-service7" style="display: none">
+                                            <div class="panel-heading">
+                                                <h3 class="panel-title">
+                                                    Pins for 7 days.
+                                                <a href="#" class="close">×</a>
+                                                </h3>
+                                            </div>
+                                            <div class="panel-body" id='pin_report7'></div>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <h4><small>2 weeks:</small></h4>
+                                    </td>
+                                    <td>
+                                    </td>
+                                    <td>
+                                        <a class="trigger" href="#"><div id="pinday8"></div></a>
+                                        <div class="modal panel panel-primary" id="terms-of-service8" style="display: none">
+                                            <div class="panel-heading">
+                                                <h3 class="panel-title">
+                                                    Pins for 2 weeks.
+                                                <a href="#" class="close">×</a>
+                                                </h3>
+                                            </div>
+                                            <div class="panel-body" id='pin_report8'></div>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </table>
+                    </div>
+                </div><!-- /.box-body -->
+            </div><!-- /.box -->
+            {% if user.profile.profit_restriction %}
+            <div class="col-md-6">
+                <div class="box box-danger">
+                    <div class="box-header">
+                        <h3 class="box-title">Monthly Refills Profit</h3>
+                    </div>
+                    <div class="box-body chart-responsive">
+                        <table class="table" id="monthly-profit">
+                            <thead>
+                                <tr>
+                                    <th>Type</th>
+                                    <th>Count</th>
+                                    <th>Profit</th>
+                                </tr>
+                            </thead>
+                            <tfoot>
+                                <tr>
+                                    <th></th>
+                                    <th></th>
+                                    <th></th>
+                                </tr>
+                            </tfoot>
+                            <tbody>
+
+                            </tbody>
+                        </table>
+                    </div>
+                </div><!-- /.box-body -->
+            </div><!-- /.box -->
+            {% endif %}
+        </div><!-- /.col (LEFT) -->
+    </section>
+{% endblock %}
+{% block body_js %}
+<script src="{{ STATIC_URL }}js/morris/raphael-min.js" type="text/javascript"></script>
+<script src="{{ STATIC_URL }}js/morris/morris.min.js"  type="text/javascript"></script>
+<script type="text/javascript" src="{{ STATIC_URL }}js/jquery.the-modal.js"></script>
+<script src="{{ STATIC_URL }}js/datatables/jquery.dataTables.js" type="text/javascript"></script>
+<script src="{{ STATIC_URL }}js/datatables/dataTables.bootstrap.js" type="text/javascript"></script>
+<script type="text/javascript">
+    $(document).ready(function () {
+        var table = $('#monthly-profit').dataTable({
+        "bServerSide": true,
+        "sAjaxSource": '/ajax_monthly_refills/',
+        "bProcessing": true,
+        "bLengthChange": true,
+        "bFilter": true,
+        "sDom": '<"top">rt<"bottom"p><"clear">',
+        "bInfo": true,
+        "bAutoWidth": true,
+        "iDisplayLength": 10,
+        "aoColumnDefs": [
+            { "bSortable": false, "aTargets": [ 0 ] },
+            { "bSortable": false, "aTargets": [ 1 ] },
+            { "bSortable": false, "aTargets": [ 2 ] }
+            ]
+        });
+
+        $('.tooltip-activate').tooltip();
+        $('#__home').addClass("active");
+        // LINE CHART
+        var line = new Morris.Line({
+            element: 'line-chart',
+            resize: true,
+            parseTime: false,
+            data: [
+                {date: '0', Success: 0, Failed: 0},
+            ],
+            xkey: 'date',
+            ykeys: ['Success', 'Failed'],
+            labels: ['Success', 'Failed'],
+            lineColors: ['#00a65a', '#f56954'],
+            hideHover: 'auto'
+        });
+        $.ajax({
+            type: "GET",
+            dataType: 'json',
+            url: "/ajax/transaction-summary/" // This is the URL to the API
+        })
+                .done(function (data) {
+                    // When the response to the AJAX request comes back render the chart with new data
+                    line.setData(data);
+                })
+                .fail(function () {
+                    // If there is no communication between the server, show an error
+                    console.log("error occured");
+                });
+        //DONUT CHART
+        var donut = new Morris.Donut({
+            element: 'sales-chart',
+            resize: true,
+            colors: ["#00a65a", "#f56954"],
+            data: [
+                {label: "None", value: 1},
+            ],
+            hideHover: 'auto'
+        });
+        $.ajax({
+            type: "GET",
+            dataType: 'json',
+            url: "/ajax/pin-usage/" // This is the URL to the API
+        })
+                .done(function (data) {
+                    // When the response to the AJAX request comes back render the chart with new data
+                    donut.setData(data);
+                })
+                .fail(function () {
+                    // If there is no communication between the server, show an error
+                    console.log("error occured");
+                });
+        $.ajax({
+            type: "GET",
+            dataType: 'json',
+            url: "/ajax/customers/" // This is the URL to the API
+        })
+                .done(function (data) {
+                    // When the response to the AJAX request comes back render the chart with new data
+                    $('#customers').text(data.result)
+                })
+                .fail(function () {
+                    // If there is no communication between the server, show an error
+                    console.log("error occured");
+                });
+        $.ajax({
+            type: "GET",
+            dataType: 'json',
+            url: "/ajax/total-transactions/" // This is the URL to the API
+        })
+                .done(function (data) {
+                    // When the response to the AJAX request comes back render the chart with new data
+                    $('#total_trans').text(data.result)
+                })
+                .fail(function () {
+                    // If there is no communication between the server, show an error
+                    console.log("error occured");
+                });
+        $.ajax({
+            type: "GET",
+            dataType: 'json',
+            url: "/ajax/transaction-successrate/" // This is the URL to the API
+        })
+                .done(function (data) {
+                    // When the response to the AJAX request comes back render the chart with new data
+                    $('#trans_success').html(data.result + '<sup style="font-size: 20px">%</sup>')
+                })
+                .fail(function () {
+                    // If there is no communication between the server, show an error
+                    console.log("error occured");
+                });
+        $.ajax({
+            type: "GET",
+            dataType: 'json',
+            url: "/ajax/transaction-profits/" // This is the URL to the API
+        })
+                .done(function (data) {
+                    // When the response to the AJAX request comes back render the chart with new data
+                    $('#profits').text('$' + data.result)
+                })
+                .fail(function () {
+                    // If there is no communication between the server, show an error
+                    console.log("error occured");
+                });
+        $.ajax({
+            type: "GET",
+            dataType: 'json',
+            url: "/ajax/need-pins-report/" // This is the URL to the API
+        })
+                .done(function (data) {
+                    // When the response to the AJAX request comes back render the chart with new data.
+                    $('#pinday1').html(data.result[0].pin_count);
+                    $('#pin_report1').html(data.result[0].pins);
+                    $('#pinday2').html(data.result[1].pin_count);
+                    $('#pin_report2').html(data.result[1].pins);
+                    $('#pinday3').html(data.result[2].pin_count);
+                    $('#pin_report3').html(data.result[2].pins);
+                    $('#pinday4').html(data.result[3].pin_count);
+                    $('#pin_report4').html(data.result[3].pins);
+                    $('#pinday5').html(data.result[4].pin_count);
+                    $('#pin_report5').html(data.result[4].pins);
+                    $('#pinday6').html(data.result[5].pin_count);
+                    $('#pin_report6').html(data.result[5].pins);
+                    $('#pinday7').html(data.result[6].pin_count);
+                    $('#pin_report7').html(data.result[6].pins);
+                    $('#pinday8').html(data.result[13].pin_count);
+                    $('#pin_report8').html(data.result[13].pins);
+                })
+    });
+    jQuery(function($){
+			// bind event handlers to modal triggers
+			$('body').on('click', '.trigger', function(e){
+				e.preventDefault();
+
+				$(this).next().modal().open();
+			});
+
+			// attach modal close handler
+			$('.modal .close').on('click', function(e){
+				e.preventDefault();
+				$.modal().close();
+			});
+
+			// below isn't important (demo-specific things)
+			$('.modal .more-toggle').on('click', function(e){
+				e.stopPropagation();
+				$('.modal .more').toggle();
+			});
+		});
+</script>
+{% endblock %}

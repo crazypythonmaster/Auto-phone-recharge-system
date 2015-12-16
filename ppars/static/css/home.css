@@ -1,0 +1,27 @@
+#selling-prices tr td h4{
+    margin-top: 0px; margin-bottom: 0px;
+}
+#selling-prices tr td h5{
+    margin-top: 0px; margin-bottom: 0px;
+}
+
+.x-button{
+    font-size: 20px; color: white;
+}
+
+.x-button:hover{
+    font-size: 20px; color: white;
+    opacity: 0.7;
+}
+
+.updates_news{
+    text-decoration: none;
+    color: #ffffff;
+    opacity: 0.7;
+}
+
+.updates_news:hover{
+    text-decoration: none;
+    color: #ffffff;
+    opacity: 0.5;
+}

@@ -1,0 +1,107 @@
+{% extends 'core/base.html' %}
+
+{% block content %}
+    <section class="content-header">
+        <h1>
+            Manage Carriers
+            <small></small>
+        </h1>
+        <ol class="breadcrumb">
+            <li><a href=""><i class="fa fa-dashboard"></i> Home</a></li>
+            <li><a href="{% url 'customer_list' %}">Carriers</a></li>
+            <li class='active'>{% if carrier %} {{carrier}} {% else %} New {% endif %}</li>
+        </ol>
+    </section>
+    {% if form.errors %}
+        {% for key, value in form.errors.items %}
+            <div class="alert alert-danger alert-dismissable">
+                <button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>
+                {{key}}{{value}}
+            </div>
+        {% endfor %}
+    {% endif %}
+    <section class="content">
+        {% if not user.is_superuser %}
+            <div class="error-page">
+                <h2 class="headline text-info">403</h2>
+                <div class="error-content">
+                    <h3><i class="fa fa-warning text-yellow"></i> Forbidden Resource.</h3>
+                    <p>
+                        You are not authorized to access this resource.
+                        Meanwhile, you may <a href="{% url 'home' %}">return to dashboard</a>.
+                    </p>
+                </div><!-- /.error-content -->
+            </div><!-- /.error-page -->
+
+        {% else %}
+            <div class="box box-primary">
+                <div class="box-header">
+                    <h3 class="box-title">{% if carrier %} Edit Carrier: {{carrier}} {% else %} Add New Carrier{% endif %}</h3>
+                </div>
+                <div class="box-body">
+                    <form class="form-horizontal" role="form" method="post" action=".">
+                        {% csrf_token %}
+                        <div class="form-group">
+                            <label for="id_name" class="col-sm-2 control-label">Carrier Name</label>
+                            <div class="col-sm-4">
+                                <input id="id_name" name="name" type="text" class="form-control" value="{{ form.name.value|default_if_none:"" }}" required autofocus/>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="id_recharge_number" class="col-sm-2 control-label">Recharge Number</label>
+                            <div class="col-sm-4">
+                                <input id="id_recharge_number" name="recharge_number" type="text" class="form-control" value="{{ form.recharge_number.value|default_if_none:"" }}" />
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="id_admin_site" class="col-sm-2 control-label">Dealer Site</label>
+                            <div class="col-sm-4">
+                                <input id="id_admin_site" name="admin_site" type="url" class="form-control" value="{{ form.admin_site.value|default_if_none:"" }}" />
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="id_renew_days" class="col-sm-2 control-label">Renew Cycle Days</label>
+                            <div class="col-sm-2">
+                                <input id="id_renew_days" name="renew_days" type="number" class="form-control" maxlength="3" value="{{ form.renew_days.value|default_if_none:"" }}"/>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="id_renew_months" class="col-sm-2 control-label">Renew Cycle Months</label>
+                            <div class="col-sm-2">
+                                <input id="id_renew_months" name="renew_months" type="number" class="form-control" maxlength="3" value="{{ form.renew_months.value|default_if_none:"" }}"/>
+                            </div>
+                        </div>
+                        <div class="form-group {% if form.default_time.errors %}has-error{% endif %}">
+                            <label for="id_password " class="col-sm-2 control-label">Default schedule refill time</label>
+                            <div class="col-sm-4">
+                                <select id="id_default_time" name="default_time" class="form-control">
+                                    {% for value, text in form.default_time.field.choices %}
+                                        <option value="{{ value }}" {% if value == form.default_time.value %}selected{% endif %}>{{ text }}</option>
+                                    {% endfor %}
+                                </select>
+                                <span class="help-block">{{ form.default_time.errors }}</span>
+                            </div>
+                        </div>
+                        <div class="box-footer">
+                            <div class="col-sm-offset-2">
+                                <button type="submit" class="btn btn-primary">Save</button>
+                                {% if carrier %}<a href="{% url 'carrier_delete' carrier.id %}" class="btn btn-danger">Delete</a>{% endif %}
+                                <a href="{% url 'carrier_list' %}" class="btn btn-default">Cancel</a>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        {% endif %}
+    </section>
+{% endblock %}
+{% block body_js %}
+    <script type="text/javascript">
+        $(document).ready(function() {
+            $('.tooltip-activate').tooltip();
+            $('#__cnp').addClass( "active" );
+            $('#__cnp ul').css('display', 'block');
+            $('#__carrier').addClass( "active" );
+        });
+    </script>
+{% endblock %}

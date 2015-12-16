@@ -1,0 +1,29 @@
+{% extends 'core/base.html' %}
+{% load crispy_forms_tags %}
+
+{% block content %}
+    <section class="content-header">
+        <h1>
+            Manage Users
+        </h1>
+        <ol class="breadcrumb">
+            <li><a href="{% url 'home' %}"><i class="fa fa-dashboard"></i> Home</a></li>
+	        <li class='active'>My Settings</li>
+        </ol>
+    </section>
+    	<section class="content">
+        <div id="create-user-form" class="col-sm-8">
+        {% crispy form %}
+        </div>
+      </section>
+{% endblock %}
+{% block body_js %}
+    <script type="text/javascript">
+        $(document).ready(function () {
+            $('.tooltip-activate').tooltip();
+            $('#__settings ul').css('display', 'block');
+            $('#__settings').addClass( "active" );
+            $('#__user').addClass( "active" );
+        });
+    </script>
+{% endblock %}

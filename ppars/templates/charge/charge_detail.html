@@ -1,0 +1,483 @@
+{% extends 'core/base.html' %}
+{% load tz %}
+{% block content %}
+<section class="content-header">
+    <h1>
+        Credit Card Charge
+        <small>#{{object.id}}</small>
+    </h1>
+    <ol class="breadcrumb">
+        <li><a href="{% url 'home' %}">Home</a></li>
+        <li><a href="{% url 'charge_list' %}">Credit Card Charges</a>
+        </li>
+        <li id="id_li" class='active'>{{ charge.id }}</li>
+    </ol>
+</section>
+<section class="content invoice">
+    {% if not user.is_superuser and charge and charge.company != user.profile.company %}
+    <div class="error-page">
+        <h2 class="headline text-info">403</h2>
+        <div class="error-content">
+            <h3><i class="fa fa-warning text-yellow"></i> Forbidden Resource.</h3>
+            <p>
+                You are not authorized to access this resource.
+                Meanwhile, you may <a href="{% url 'home' %}">return to
+                dashboard</a>.
+            </p>
+        </div>
+        <!-- /.error-content -->
+    </div>
+    <!-- /.error-page -->
+    {% else %}
+    <!-- title row -->
+    <input type="hidden" value="{{object.id}}" id="charge_id"/>
+    <input type="hidden" value="{{object.summ}}" id="charge_summ"/>
+    <input type="hidden" value="{{object.amount}}" id="charge_amount"/>
+    <input type="hidden" value="{{object.used}}" id="hid_used"/>
+    <input type="hidden" value="{{object.pin}}" id="hid_pin"/>
+    <input type="hidden" value="{{object.pin_used}}" id="hid_pin_used"/>
+    <div class="row">
+        <div class="col-xs-12">
+            <h2 class="page-header">
+                <i class="fa fa-globe"></i> EZ-Cloud, Inc.
+                <div class="pull-right">Available: ${{charge.available_funds}}
+                </div>
+            </h2>
+        </div>
+        <!-- /.col -->
+    </div>
+    <!-- info row -->
+    <div class="row invoice-info">
+        <b class="pull-right"> Date: {{ charge.created|timezone:"US/Eastern"|date:"m/d/y" }}</b><br/>
+        <div class="col-sm-4 invoice-col">
+            From
+            <address>
+                <strong>{{ user }}</strong><br>
+                <!--
+                                    795 Folsom Ave, Suite 600<br>
+                                    San Francisco, CA 94107<br>
+                -->
+                Phone:
+                {{ charge.company.twilio_number}}<br/>
+                Email: {{ charge.company.email_id}}
+            </address>
+            <div>
+            Notes:
+            <div>
+                <div id="note">{{ charge.note }}</div>
+                <button id="edit_note_button" type="button" style="width:100px; height: 35px; font-size: 12px;" class="btn btn-info btn-lg">Change Notes</button>
+                <textarea style="display: none; resize: none;" id="id_note"></textarea>
+                <button id="save_note_button" type="button" style="width:100px; height: 35px; font-size: 12px; display: none;" class="btn btn-info btn-lg">Save Notes</button>
+            </div>
+        </div>
+        </div>
+        <!-- /.col -->
+        <div class="col-sm-4 invoice-col">
+            To
+            <address>
+                <strong><a href="{% url 'customer_update' charge.customer.id%}">{{ charge.customer }}</a></strong><br>
+                {{ charge.customer.address }}<br>
+                {{ charge.customer.city }},
+                {{ charge.customer.state }}
+                {{ charge.customer.zip }}<br>
+                Phone: {{ charge.autorefill.phone_number}}<br/>
+                Email: {{ charge.customer.primary_email}}
+            </address>
+        </div>
+        <!-- /.col -->
+        <div class="col-sm-4 invoice-col">
+            <b>Invoice #{{ charge }}</b><br/>
+            <br/>
+            <b>Getaway:</b> {{ charge.get_payment_getaway_display }}<br/>
+            <b>Credit Card:</b> {{ charge.creditcard|slice:"-4:" }}<br/>
+            <b>Charge Status:</b> {{ charge.get_status_display}}<br/>
+            {% if charge.status = 'R' %}
+            <b>Refund Status:</b> {{ charge.get_refund_status_display }}<br/>
+            {% endif %}
+            <b>Advanced Status:</b> {{ charge.adv_status}}<br/>
+            <b>Payment System ID:</b> {{ charge.atransaction}}<br/>
+        </div>
+        <!-- /.col -->
+    </div>
+    <!-- /.row -->
+    <!-- Table row -->
+    <div class="row">
+        <div class="col-xs-12 box box-solid">
+            <table class="table">
+                <thead>
+                <tr>
+                    <th>Qty</th>
+                    <th>Product</th>
+                    <th>Serial #</th>
+                    {% if charge.pin %}
+                        <th>Pin</th>
+                    {% endif %}
+                    <th>Description</th>
+                    <th>Subtotal</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr>
+                    <td>1</td>
+                    <td>{{ charge.autorefill.plan }}</td>
+                    <td>{{ charge.autorefill.plan.id }}</td>
+                    {% if charge.pin %}
+                        <td>{{ charge.pin }}</td>
+                    {% endif %}
+                    <td>Refill phone {{ charge.autorefill.phone_number }}</td>
+                    <td>${{ charge.amount }}</td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+        <!-- /.col -->
+    </div>
+    <!-- /.row -->
+    <div class="row">
+        <!-- accepted payments column -->
+        <div class="col-xs-4">
+            <div class="box box-solid">
+                <table class="table">
+                    <tr>
+                        <th>Used Status</th>
+                        <td id="charge_used"></td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <div class="input-group input-group-sm">
+                                <div class="input-group-addon">$</div>
+                                <input id="amount_id" name="amount" type="text" class="form-control"/>
+                            </div>
+                            <span class="text-danger" id="amount_error"></span>
+                        </td>
+                        <td id="charge_button"></td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+        <!-- /.col -->
+        <div class="col-xs-4">
+            {% if charge.pin and not charge.pin_used %}
+            <div class="box box-solid">
+                <table class="table">
+                    <tr>
+                        <th>Pin</th>
+                        <td>{{ charge.pin }}</td>
+                    </tr>
+                    <tr>
+                        <th></th>
+                        <td><button type="button" class="btn btn-default btn-sm" onclick="addToUnused();" id='add_to_unused'>Add Pin to Unused</button></td>
+                    </tr>
+                </table>
+            </div>
+            {% endif %}
+        </div>
+        <!-- /.col -->
+        <div class="col-xs-4">
+            <div class="box box-solid">
+                <table class="table">
+                    <tr>
+                        <th>Total:</th>
+                        <td>${{ charge.amount }}</td>
+                    </tr>
+                    <tr>
+                        <th>Already Used:</th>
+                        <td>${{ charge.summ }}</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+        <!-- /.col -->
+    </div>
+    <!-- /.row -->
+    <!-- this row will not appear when printing -->
+    <div class="no-print">
+        <div class="row">
+            <div class="col-xs-12">
+                <button class="btn btn-default" onclick="window.print();">
+                    <i class="fa fa-print"></i> Print </button>
+                {% if charge.status == 'E' %}
+                <button id="cc_retry" data-loading-text="Retrying CC Charge..."
+                        class="btn btn-success pull-right">
+                    <i class="fa fa-refresh"></i> Retry Charge</button>
+                    {% if charge.get_last_transaction %}
+                    <button id="cc_retry_and_trans_restart" data-loading-text="Retrying CC Charge and Transaction..."
+                            class="btn btn-success pull-right">
+                        Retry Charge and restart transaction
+                    </button>
+                    {% endif %}
+                {% endif %}
+                {% if charge.status == 'S' and charge.payment_getaway != 'DP' and charge.payment_getaway != 'CP' %}
+                {% if charge.is_refundable %}
+                <button id="cc_refund" data-loading-text="Refunding Amount..."
+                        class="btn btn-success pull-right"
+                        style="margin-right: 5px;">
+                    <i class="fa fa-money"></i>
+                    Refund Amount
+                </button>
+                {% else %}
+                <button id="cc_void" data-loading-text="Void"
+                        class="btn btn-success pull-right"
+                        style="margin-right: 5px;"><i class="fa fa-money"></i> Void
+                </button>
+                {% endif %}
+                {% endif %}
+            </div>
+        </div>
+        <br/>
+    <div class="row">
+        <div class="col-lg-4">
+            <div class="box box-info">
+                <div class="box-header">
+                    <h3 class="box-title">Connected transactions</h3>
+                </div>
+                <div class="box box-solid">
+                    <table class="table table-condensed">
+                        <thead>
+                        <tr>
+                            <th>Connected</th>
+                            <th>Transaction</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        {% for transaction in charge.transaction_list %}
+                            <tr>
+                                <td>
+                                    {{ transaction.created|timezone:"US/Eastern"|date:"m/d/y P" }}
+                                <td>
+                                    <a href="{{ transaction.transaction.get_full_url }}" class="btn btn-info btn-xs" target="_blank">{{ transaction.transaction.id }}</a>
+                            </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-8" id="main_steps">
+            <div class="box">
+                <div class="box-header">
+                    <h3 class="box-title">Charge Steps</h3>
+                </div>
+                <div class="box box-solid">
+                    <table class="table table-condensed" id="steps">
+                        <thead>
+                        <tr>
+                            <th>Timestamp</th>
+                            <th>Action</th>
+                            <th>Status</th>
+                            <th>Advanced Status</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    </div>
+    {% endif %}
+</section>
+{% endblock %}
+{% block body_js %}
+<script type="text/javascript">
+    $(document).ready(function () {
+        $('.tooltip-activate').tooltip();
+        $('#__cccharges').addClass("active");
+        var used = $('#hid_used').val();
+        var charge_summ = Number($('#charge_summ').val());
+
+        if (used == 'True') {
+            $('#charge_used').html('<span class="fa fa-check-circle text-success"></span>');
+            $('#charge_button').html('<button type="button" class="btn btn-default btn-sm" id="markUnused">Mark Unused</button>');
+        }
+        else{
+            $('#charge_used').html('<span class="fa fa-minus-circle text-danger"></span>');
+            if(charge_summ){
+                $('#charge_button').html('<button type="button" class="btn btn-default btn-sm" id="markUsed">Mark Used</button><br/>' +
+                        '<button type="button" class="btn btn-default btn-sm" id="markUnused">Mark Unused</button>');
+            }
+            else{
+                $('#charge_button').html('<button type="button" class="btn btn-default btn-sm" id="markUsed">Mark Used</button>');
+            }
+
+        }
+
+        // change notes of credit card charge via ajax
+        $('#edit_note_button').on('click', function(){
+            $('#id_note').show();
+            $('#id_note').val($('#note').text());
+            $('#save_note_button').show();
+            $('#note').hide();
+            $(this).hide();
+        });
+        $('#save_note_button').on('click', function(){
+            $('#id_note').hide();
+            $('#edit_note_button').show();
+            $(this).hide();
+            $.ajax({
+                url: "/ajax_change_charge_note/",
+                data: {
+                    note: $('#id_note').val(), id: $('#id_li').text()
+                },
+                success:function(){
+                    $('#note').text($('#id_note').val());
+                }
+            });
+            $('#note').show();
+        });
+
+        $('#cc_refund').click(function () {
+            var btn = $(this);
+            btn.button('loading');
+            $.ajax({
+                url: "/ajax/cc-refund/",
+                data: {
+                    id: $('#charge_id').val()
+                }
+            }).success(function (response) {
+                location.reload();
+            })
+                //.error   (function()     { alert("Error")   ; })
+                //.complete(function()     { alert("complete"); })
+            ;
+        });
+        $('#cc_void').click(function () {
+            var btn = $(this);
+            btn.button('loading');
+            $.ajax({
+                url: "/ajax/cc-void/",
+                data: {
+                    id: $('#charge_id').val()
+                }
+            }).success(function (response) {
+                location.reload();
+            })
+                //.error   (function()     { alert("Error")   ; })
+                //.complete(function()     { alert("complete"); })
+            ;
+        });
+        $('#cc_retry').click(function () {
+            var btn = $(this);
+            btn.button('loading');
+            $.ajax({
+                url: "/ajax/cc-retry/",
+                data: {
+                    id: $('#charge_id').val()
+                }
+            }).success(function (response) {
+                location.reload();
+            })
+                //.error   (function()     { alert("Error")   ; })
+                //.complete(function()     { alert("complete"); })
+            ;
+        });
+        $('#cc_retry_and_trans_restart').click(function () {
+            var btn = $(this);
+            btn.button('loading');
+            $.ajax({
+                url: "/ajax/cc-retry-and-trans-restart/",
+                data: {
+                    id: $('#charge_id').val()
+                }
+            }).success(function (response) {
+                location.reload();
+            })
+                //.error   (function()     { alert("Error")   ; })
+                //.complete(function()     { alert("complete"); })
+            ;
+        });
+        var id = $('#charge_id').val();
+        $.getJSON('/charge/' + id + '.json', function (data, jqXHR) {
+            var steps = data.steps;
+            $("#steps > tbody").html("");
+            for (var i = 0; i < steps.length; i++) {
+                if (steps[i].status == 'E') {
+                    var row = '<tr class="danger"><td>';
+                }
+                else {
+                    var row = '<tr><td>';
+                }
+                row = row + steps[i].created + '</td><td>' + steps[i].action + '</td><td>'+ steps[i].status_str +'</td><td>';
+                row = row + (steps[i].adv_status || '');
+                row = row + '</td></tr>';
+                $('#steps').append(row);
+            }
+        });
+    });
+
+    function addToUnused() {
+        window.location.href = "/unused-pin/create?plan={{charge.autorefill.plan.id}}&pin={{charge.pin}}";
+    }
+
+    $(document).on('click', "#markUsed", function () {
+        var button = 'used';
+        var amount = Number($('#charge_amount').val());
+        var charge_summ = Number($('#charge_summ').val());
+        var free_summ = amount - charge_summ;
+
+        if (amount == '' || amount == 0){
+            amount = 0;
+            if ($('#hid_pin').val() && $('#hid_pin_used').val() == 'False'){
+                alert('User, please remember to add pin to unused pin');
+            }
+            mark_charge(button, amount)
+        }
+        else if (!jQuery.isNumeric(amount) || !isNumber(amount) || Number(amount) < 0 ){
+            $('#amount_error').html('<p>Used amount must be positive numeric</p>')
+        }
+        else if(Number(amount) > free_summ){
+            $('#amount_error').html('<p>Charge has $'+ free_summ +' free</p>')
+        }
+        else {
+            if ($('#hid_pin').val() && $('#hid_pin_used').val() == 'False'){
+                alert('User, please remember to add pin to unused pin');
+            }
+            mark_charge(button, amount);
+        }
+    });
+
+    $(document).on('click', "#markUnused", function () {
+        var button = 'unused';
+        var amount = $('#amount_id').val();
+        var charge_summ = Number($('#charge_summ').val());
+
+        if (amount == '' || amount == 0){
+            amount = 0;
+            if ($('#hid_pin').val() && $('#hid_pin_used').val() == 'False'){
+                alert('User, please remember to add pin to unused pin');
+            }
+            mark_charge(button, amount)
+        }
+        else if (!jQuery.isNumeric(amount) || !isNumber(amount) || Number(amount) < 0 ){
+            $('#amount_error').html('<p>Refund amount must be positive numeric</p>')
+        }
+        else if(Number(amount) > charge_summ){
+            $('#amount_error').html('<p>Only $'+ charge_summ +' of charge used</p>')
+        }
+        else {
+            if ($('#hid_pin').val() && $('#hid_pin_used').val() == 'False'){
+                alert('User, please remember to add pin to unused pin');
+            }
+            mark_charge(button, amount);
+        }
+    });
+    function mark_charge(button, amount){
+        $.ajax({
+                url: "/ajax/mark-charge/",
+                data: {
+                    id: $('#charge_id').val(),
+                    button: button,
+                    amount: amount
+                }
+            }).success(function (response) {
+                location.reload();
+            });
+            //.error   (function()     { alert("Error")   ; })
+            //.complete(function()     { alert("complete"); })
+    }
+    function isNumber(n) {
+      return parseFloat(n) && isFinite(n);
+    }
+</script>
+{% endblock %}

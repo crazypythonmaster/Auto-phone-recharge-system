@@ -1,0 +1,187 @@
+{% extends 'core/base.html' %}
+{% load tz %}
+{% block content %}
+    <section class="content-header">
+        <h1>
+            Pin Report
+            <small></small>
+        </h1>
+        <ol class="breadcrumb">
+			<li><a href="{% url 'home' %}">Home</a></li>
+  			<li><a href="{% url 'pinreport_list' %}">Pin Reports</a></li>
+			<li class='active'>{{pinreport.id}}</li>
+        </ol>
+    </section>
+	<section class="content invoice">
+	   {% if not user.is_superuser and pinreport and pinreport.company != user.profile.company %}
+	   <div class="error-page">
+			<h2 class="headline text-info">403</h2>
+			<div class="error-content">
+				<h3><i class="fa fa-warning text-yellow"></i> Forbidden Resource.</h3>
+				<p>
+					You are not authorized to access this resource.
+					Meanwhile, you may <a href="{% url 'home' %}">return to dashboard</a>.
+				</p>
+			 </div><!-- /.error-content -->
+		</div><!-- /.error-page -->
+	   {% else %}
+		<!-- title row -->
+		<!--<input type="hidden" value="{{pinreport.id}}" id="pinreport_id"/>-->
+		<div class="row  no-print">
+			<div class="col-xs-12">
+				<h2 class="page-header">
+					<i class="fa fa-globe"></i> EZ-Cloud, Inc.<!-- this row will not appear when printing -->
+					<button class="btn btn-default" onclick="window.print();"><i class="fa fa-print"></i> Print</button>
+					<a target="_blank" href="{% url 'pinreport_download' pinreport.id %}">
+						<button class="btn btn-default">
+							<i class="fa fa-file"></i>
+                     			Download
+                		</button>
+					</a>
+					<small class="pull-right">Date: {{ pinreport.created|timezone:"US/Eastern"|date:"m/d/y H:i" }}</small>
+				</h2>
+			</div><!-- /.col -->
+		</div>
+		<!-- info row -->
+		<div class="box">
+			<div class="box-body table-responsive">
+				<button class="btn btn-default" onclick="markUsed();">Mark as Used</button>
+				<button class="btn btn-default" onclick="markUnused();">Mark as Unused</button>
+				<table class="table table-condensed" id="datatable">
+					<thead>
+					<tr>
+						<th><input type="checkbox" id="id_select_all"/></th>
+						<th>#</th>
+						<th>Pin</th>
+						<th>Plan</th>
+						<th>Note</th>
+						<th>Cost</th>
+						<th>Used</th>
+
+					</tr>
+					</thead>
+					<tbody>
+					{% for pin_field in pin_fields %}
+					<tr>
+
+						<td>
+							<input type="hidden" class="pin_field" value='{{pin_field.id}}'>
+							<input class="selected_field" type="checkbox"/>
+						</td>
+						<td>{{ forloop.counter }}</td>
+						<td>{{ pin_field.pin }}</td>
+						<td>{{ pin_field.plan }}</td>
+						<td id="note_{{pin_field.id}}">{{ pin_field.note }}</td>
+						<td>${{ pin_field.cost|default_if_none:'' }}</td>
+                        <td id="used_{{pin_field.id}}">
+						{% if pin_field.used %}
+                        <span class="fa fa-check-circle text-success"></span></td>
+                        <td id="button_{{pin_field.id}}">
+							<button type="button" class="btn btn-default btn-sm" onclick="markUnused(pin_id={{pin_field.id}})">Mark Unused</button>
+                        {% else %}
+                        <span class="fa fa-minus-circle text-danger"></span></td>
+                        <td id="button_{{pin_field.id}}">
+                        	<button type="button" class="btn btn-default btn-sm" onclick="markUsed(pin_id={{pin_field.id}})">Mark Used</button>
+                        {% endif %}
+                        </td>
+					</tr>
+					{% endfor %}
+					</tbody>
+				</table>
+			</div>
+		</div>
+		{% endif %}
+     </section>
+{% endblock %}
+{% block body_js %}
+<script type="text/javascript">
+	$(document).ready(function () {
+		$('.tooltip-activate').tooltip();
+		$('#__pin ul').css('display', 'block');
+		$('#__pin').addClass("active");
+		$('#__pinreport').addClass("active");
+		$('#id_select_all').on('ifChecked', function(){
+			$('input[type="checkbox"]').iCheck('check');
+		});
+		$('#id_select_all').on('ifUnchecked', function(){
+			$('input[type="checkbox"]').iCheck('uncheck');
+		});
+	});
+
+	function markUsed(pin_id) {
+		var note = '';
+		var ev = 'add';
+		if (pin_id){
+			var exist_note = $('#note_' + pin_id).text();
+			if(exist_note){
+				ev = 'change'
+			}
+		}
+		note = prompt('Do you want to ' + ev + ' note to pin?', exist_note);
+		if(pin_id){
+			makeRequest(pin_id, 'used', note)
+		}
+		else{
+			$('.selected_field').toArray().forEach(function (i, val) {
+				pin_id = '';
+				if ($(i).is(':checked')) {
+					pin_id = $(i).parent().prev().val();
+					makeRequest(pin_id, 'used', note)
+				}
+			});
+		}
+	$('input[type="checkbox"]').iCheck('uncheck');
+	}
+
+	function makeRequest(pin_id, button, note){
+		$.ajax({
+			type: "GET",
+			url: "{% url 'ajax_mark_pin_field' %}",
+			data: {
+				button: button,
+				note: note,
+				pin_id: pin_id
+			},
+			success: function (data) {
+				if ('used' == button){
+					$('#used_' + pin_id).html('<span class="fa fa-check-circle text-success"></span>');
+					$('#button_' + pin_id).html('<button type="button" class="btn btn-default btn-sm" id="mark_unused_' + pin_id + '}}" onclick="markUnused(pin_id=' + pin_id + ')">Mark Unused</button>');
+				}
+				else if('unused' == button){
+					$('#used_' + pin_id).html('<span class="fa fa-minus-circle text-danger"></span>');
+					$('#button_' + pin_id).html('<button type="button" class="btn btn-default btn-sm" id="mark_used_'+pin_id+'" onclick="markUsed(pin_id='+pin_id+')">Mark Used</button>');
+				}
+				if (note) {
+					$('#note_' + pin_id).text(note)
+				}
+			}
+		});
+
+	}
+
+	function markUnused(pin_id) {
+		var note = '';
+		var ev = 'add';
+		if (pin_id){
+			var exist_note = $('#note_' + pin_id).text();
+			if(exist_note){
+				ev = 'change'
+			}
+		}
+		note = prompt('Do you want to ' + ev + ' note to pin?', exist_note);
+		if(pin_id){
+			makeRequest(pin_id, 'unused', note)
+		}
+		else{
+			$('.selected_field').toArray().forEach(function (i, val) {
+				pin_id = '';
+				if ($(i).is(':checked')) {
+					pin_id = $(i).parent().prev().val();
+					makeRequest(pin_id, 'unused', note)
+				}
+			});
+		}
+	$('input[type="checkbox"]').iCheck('uncheck');
+	}
+</script>
+{% endblock %}

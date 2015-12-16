@@ -1,0 +1,699 @@
+{% extends 'core/base.html' %}
+{% block add_css %}
+<link href="{{ STATIC_URL }}css/customer-form.css" rel="stylesheet" type="text/css">
+<link href="{{ STATIC_URL }}css/selectize.bootstrap3.css" rel="stylesheet" type="text/css">
+{% endblock %}
+{% block content %}
+    <section class="content-header">
+        <h1>
+            Swipe And Refill
+            <small></small>
+        </h1>
+        <ol class="breadcrumb">
+            <li><a href=""><i class="fa fa-dashboard"></i> Home</a></li>
+            <li><a href="{% url 'customer_list' %}">Customers</a></li>
+	        <li class='active'>Swipe And Refill</li>
+        </ol>
+    </section>
+	<div id="id_errors">
+            {% if form.errors %}
+      {% for key, value in form.errors.items %}
+	    <div  class="alert alert-danger alert-dismissable">
+           <button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>
+           {{key}}{{value|safe|escape}}
+         </div>
+      {% endfor %}
+    {% endif %}
+    </div>
+
+    <div class="swipe-card-form-group">
+        <div class="div-swipe-card">
+            <input id="swipe-card-data" value="" autocomplete="off">
+            <button type="button" class="btn btn-primary swipe-card" onclick="{% if user.profile.company.can_swipe_card_in_search %}swipeCard();{% else %}alert('This option is not enabled for you. Please, contact support to enable it for you.');{% endif %}">Swipe Credit Card</button>
+            <a href="{% url 'customer_list' %}" class="btn btn-default">Cancel</a>
+        </div>
+    </div>
+	<section class="content">
+	   <div class="box box-primary">
+			<div class="box-header">
+                <h3 style="margin-left: 15px;">New Customer with number <span class="new-customer-number"></span></h3>
+            </div>
+    		<form class="form-horizontal" id="customerForm" role="form" method="post"  action="{% url 'swipe_and_refill' %}">
+				{% csrf_token %}
+                <div class="form-group">
+					<label for="id_first_name" class="col-sm-2 control-label">Customer Name</label>
+					<div class="col-sm-3">
+						<input id="id_first_name" name="first_name" type="text" class="form-control" value="{{ form.first_name.value|default_if_none:"" }}" placeholder="First Name"/>
+					</div>
+					<div class="col-sm-3">
+					  	<input id="id_last_name" name="last_name" type="text" class="form-control" value="{{ form.last_name.value|default_if_none:"" }}" placeholder="Last Name"/>
+					</div>
+				</div>
+                <div class="form-group div_phone_number">
+                    <label for="id_phone_number1" class="col-sm-2 control-label">Phone</label>
+                    <div class="col-sm-2">
+                        <input id="id_phone_number1" name="phone_number1" type="text" class="form-control" value="" readonly/>
+                        <span class="help-block" id="help_phone_number1"></span>
+                    </div>
+                    <label for="id_phone_title1" class="col-sm-1 control-label">Title</label>
+                    <div class="col-sm-2">
+                        <select id="id_phone_title1" name="phone_title1" class="form-control">
+							<option value=""></option>
+							<option value="Owner">Owner</option>
+							<option value="Home">Home</option>
+							<option value="Office">Office</option>
+							<option value="Wife">Wife</option>
+							<option value="Husband">Husband</option>
+							<option value="Dome">Daughter</option>
+							<option value="Sun">Sun</option>
+						</select>
+                    </div>
+					<label for="id_sms_gateway1" class="col-sm-1 control-label">SMS Email</label>
+                    <div class="col-sm-2">
+                        <select id="id_sms_gateway1" name="sms_gateway1" class="form-control">
+							{% for gateway in sms_email_gateways %}
+					  	  		<option value="{{ gateway.0 }}" >{{ gateway.1 }}</option>
+							{% endfor %}
+						</select>
+                    </div>
+					<div class="col-sm-1">
+						<input id="id_for_sms_email1" name="for_sms_email1" type="checkbox">
+					</div>
+				</div>
+                <div class="form-group" id="div_phone_numbers" hidden>
+      				<label for="id_phone_numbers" class="col-sm-2 control-label">Phone Numbers</label>
+					<div class="col-sm-4">
+					  <textarea
+						id="id_phone_numbers"
+						name="phone_numbers"
+						rows="4"
+						class="form-control tooltip-activate"
+						required
+						data-toggle="tooltip"
+						data-placement="auto"
+						title="Enter a comma seperated list of Phone Numbers" >{{ form.phone_numbers.value|default_if_none:"" }}</textarea>
+					  <span class="help-block" id="help_phone_numbers"></span>
+					</div>
+				</div>
+                <div class="form-group" id="div_phone_titles" hidden>
+      				<label for="id_phone_titles" class="col-sm-2 control-label">Phone Titles</label>
+					<div class="col-sm-4">
+					  <textarea
+						id="id_phone_titles"
+						name="phone_titles"
+						rows="4"
+						class="form-control tooltip-activate"
+						required
+						data-toggle="tooltip"
+						data-placement="auto"
+						title="Enter a comma seperated list of Phone Titles" >{{ form.phone_titles.value|default_if_none:"" }}</textarea>
+					  <span class="help-block" id="help_phone_titles"></span>
+					</div>
+				</div>
+				<div class="form-group" id="div_phone_gateways" hidden>
+      				<label for="id_phone_gateways" class="col-sm-2 control-label">Phone Gateways</label>
+					<div class="col-sm-4">
+					  <textarea
+						id="id_phone_gateways"
+						name="phone_gateways"
+						rows="4"
+						class="form-control tooltip-activate"
+						required
+						data-toggle="tooltip"
+						data-placement="auto"
+						title="Enter a comma seperated list of Phone Gateways" >{{ form.phone_gateways.value|default_if_none:"" }}</textarea>
+					  <span class="help-block" id="help_phone_gateways"></span>
+					</div>
+				</div>
+				<div class="form-group" id="div_phone_sms_emails" hidden>
+      				<label for="id_phone_sms_emails" class="col-sm-2 control-label">Phone SMS Emails</label>
+					<div class="col-sm-4">
+					  <textarea
+						id="id_phone_sms_emails"
+						name="phone_sms_emails"
+						rows="4"
+						class="form-control tooltip-activate"
+						required
+						data-toggle="tooltip"
+						data-placement="auto"
+						title="Enter a comma seperated list of Phone SMS Emails" >{{ form.phone_sms_emails.value|default_if_none:"" }}</textarea>
+					  <span class="help-block" id="help_phone_sms_emails"></span>
+					</div>
+				</div>
+                {% if form.instance.creditcard %}
+                    <div class="form-group">
+                        <div class="col-sm-offset-2 col-sm-5">
+                        {% if form.instance.authorize_id %}
+                            <div class="label label-success">Authorize: card added</div>
+                        {% else %}
+                            <div class="label label-danger">Authorize: card not added</div>
+                        {% endif %}
+                        {% if form.instance.usaepay_customer_id %}
+                            <div class="label label-success">USAePay: card added</div>
+                        {% else %}
+                            <div class="label label-danger" >USAePay: card not added</div>
+                        {% endif %}
+                        {% if form.instance.has_local_cards %}
+                            <div class="label label-success">Local Storage: card added</div>
+                        {% else %}
+                            <div class="label label-danger" >Local Storage: card not added</div>
+                        {% endif %}
+                        </div>
+                     </div>
+					<div class="form-group credit_card">
+						<label for="id_card_number" class="col-sm-2 control-label">Credit Card</label>
+						<div class="col-sm-4">
+							<input type="hidden" id="id_exist_card_number" value='{{ form.instance.creditcard }}'>
+							<p class="btn btn-default" >{{ form.instance.creditcard }}</p>
+							<span id='id_exist_card_type'></span>
+                            <button class="btn btn-primary btn-xs" onclick="updateCard();">Update Credit Card</button>
+						</div>
+					</div>
+                    <div class="form-group card_date">
+						<label class="col-sm-2 control-label">Expiration Date</label>
+						<div class="col-sm-4">
+                           <p class="btn btn-default ">{{ form.instance.get_local_card_expiration_month }}/{{ form.instance.get_local_card_expiration_year }}</p>
+                           <button class="btn btn-primary btn-xs" onclick="updateCardDate();">Update Credit Card Date and CVV</button>
+                        </div>
+                    </div>
+                    {% endif %}
+                <div id="credit-value" class="credit_card_number">
+                    <input type="hidden" id="card_number_update" name="card_number_update" value="False">
+                    <input type="hidden" id="company_cc_type"  value='{{ user.profile.company.cccharge_type }}'>
+					<input type="hidden" name="company"  value='{{ user.profile.company.id }}'>
+                    <div id="credit-names-value" class="form-group credit_card_names">
+                        <label for="id_cc_first_name" class="col-sm-2 control-label">Card owner</label>
+                        <div class="col-sm-3">
+                            <input id="id_cc_first_name" name="cc_first_name" type="text" class="form-control" value="{{ customer.cards.0.first_name.value|default_if_none:"" }}" placeholder="First Name"/>
+                        </div>
+                        <div class="col-sm-3">
+                            <input id="id_cc_last_name" name="cc_last_name" type="text" class="form-control" value="{{ customer.cards.0.last_name.value|default_if_none:"" }}" placeholder="Last Name"/>
+                        </div>
+                    </div>
+					<div id='card_number_block' class="form-group ">
+						<label for="id_card_number" class="col-sm-2 control-label">Card Number</label>
+						<div class="col-sm-4">
+						  <input
+                                  id="id_card_number"
+                                  name="card_number"
+                                  type="text"
+                                  class="form-control"
+                                  value="{{ form.card_number.value|default_if_none:'' }}"
+                                  placeholder="Card Number"
+                                  maxlength="19"/>
+                        <span class="help-block" id="help_card_number"></span>
+						</div>
+						<div id='card_type'></div>
+					</div>
+                </div>
+                <div class="credit_card_date">
+                    <input type="hidden" id="id_card_date_update" name="card_date_update" value="False">
+                    <div class="form-group">
+						<label for="id_expiration_month" class="col-sm-2 control-label">Expiration Date</label>
+						<div class="col-sm-2">
+						  <select class="form-control" id="id_expiration_month" name="expiration_month" required>
+							{% for value, text in form.expiration_month.field.choices %}
+							  <option value="{{ value }}" {% if value = form.instance.get_local_card_expiration_month %} selected="selected"{% endif %} >{{ text }}</option>
+							{% endfor %}
+						  </select>
+						</div>
+						<div class="col-sm-2">
+							<select class="form-control" id="id_expiration_year" name="expiration_year" required>
+							{% for value, text in form.expiration_year.field.choices %}
+
+							  <option value="{{ value }}" {% if value = form.instance.get_local_card_expiration_year %} selected="selected"{% endif %} >{{ text }}</option>
+							{% endfor %}
+						  </select>
+						</div>
+                        <label for="id_cvv" class="col-sm-1 control-label">CVV</label>
+						<div class="col-sm-2">
+						  <input id="id_cvv" name="cvv" type="text" data-toggle="tooltip" title="Please, enter CVV." class="form-control" value="{{ form.cvv.value|default_if_none:'' }}" placeholder="CVV" maxlength="4"/>
+						</div>
+					</div>
+                </div>
+                {% if use_sellercloud %}
+                <div class="form-group" id="div_sc_account">
+					<label for="id_sc_account" class="col-sm-2 control-label">SellerCloud Account ID</label>
+					<div class="col-sm-4">
+						<input id="id_sc_account" name="sc_account" type="text" class="form-control" value="{{form.sc_account.value|default_if_none:"" }}"/>
+						<span class="help-block" id="help_sc_account"></span>
+					</div>
+      			</div>
+                {% endif %}
+				<div class="form-group" id="div_primary_email">
+					<label for="id_primary_email" class="col-sm-2 control-label">Primary E-Mail</label>
+					<div class="col-sm-4">
+						<input id="id_primary_email" name="primary_email" type="email" class="form-control" value="{{form.primary_email.value|default_if_none:"" }}"/>
+						<span class="help-block" id="help_primary_email"></span>
+					</div>
+      			</div>
+				<div class="form-group">
+					<label for="id_address" class="col-sm-2 control-label">Street Address</label>
+					<div class="col-sm-4">
+					  <textarea
+						id="id_address"
+						name="address"
+						rows="1" cols="10"
+						class="form-control tooltip-activate expand"
+						data-toggle="tooltip"
+						data-placement="auto"
+						title="Enter the full address here." >{{ form.address.value|default_if_none:"" }}</textarea>
+					</div>
+			  	</div>
+			  	<div class="form-group">
+					<label for="id_city" class="col-sm-2 control-label">City</label>
+					<div class="col-sm-3">
+					  <input id="id_city" name="city" type="text" class="form-control" value="{{ form.city.value|default_if_none:"" }}"/>
+                    </div>
+					<label for="id_state" class="col-sm-1 control-label">State</label>
+					<div class="col-sm-2">
+					  <input id="id_state" name="state" type="text" class="form-control" value="{{ form.state.value|default_if_none:"" }}"/>
+                    </div>
+					<label for="id_zip" class="col-sm-1 control-label">Zip Code</label>
+					<div class="col-sm-2">
+					  <input id="id_zip" name="zip" type="text" class="form-control" maxlength="6" value="{{ form.zip.value|default_if_none:"" }}"/>
+					</div>
+				</div>
+                <div class="box-footer">
+			  		<div class="col-sm-offset-2">
+                        <button type="button" class="btn btn-primary go-to-refill">Go to Refill</button>
+                        <button type="button" class="btn btn-primary go-to-schedule" style="background-color: #3c8079">Go to Schedule</button>
+                        {% if user.profile.company.cccharge_type != 'DP' %}
+                        <button type="button" class="btn btn-primary go-to-charge" style="background-color: green">Go to Charge</button>
+                        {% endif %}
+                    </div>
+			    </div>
+    		</form>
+    	</div>
+   </section>
+{% endblock %}
+{% block body_js %}
+<script src="{{ STATIC_URL }}js/selectize.min.js" type="text/javascript"></script>
+<script type="text/javascript">
+	var card_types = {'3': {'type':'Amex', 'card_length': 16},
+                      '4': {'type':'Visa', 'card_length': 15},
+                      '5': {'type':'Master Card', 'card_length': 15},
+                      '6': {'type':'Discover', 'card_length': 15}
+                     };
+    function getUrlParameter(sParam) {
+        var sPageURL = window.location.search.substring(1);
+        var sURLVariables = sPageURL.split('&');
+        for (var i = 0; i < sURLVariables.length; i++)
+        {
+            var sParameterName = sURLVariables[i].split('=');
+            if (sParameterName[0] == sParam)
+            {
+                return sParameterName[1];
+            }
+        }
+    }
+    var originalForm;
+    $(document).ready(function () {
+        var $select = $('#id_phone_title1').selectize({
+			delimiter: ',',
+			persist: false,
+			create: function(input) {
+				return {
+					value: input,
+					text: input
+				}
+			}
+		});
+		var $select_sms_email = $('#id_sms_gateway1').selectize();
+        var selectize = $select[0].selectize;
+		selectize.createItem($('#id_phone_titles').val().split(',')[0]);
+        var $existed_phones = $('#id_phone_numbers').val().split(',');
+        var $existed_titles = $('#id_phone_titles').val().split(',');
+        var $existed_gateways = $('#id_phone_gateways').val().split(',');
+        var $existed_use = $('#id_phone_sms_emails').val().split(',');
+        for (var i=0; i<$existed_phones.length; i++){
+			var $select = $('#id_phone_title' + (i+1)).selectize({
+				delimiter: ',',
+				persist: false,
+				create: function(input) {
+					return {
+						value: input,
+						text: input
+					}
+				}
+			});
+			var selectize = $select[0].selectize;
+			selectize.createItem($existed_titles[i]);
+
+			var $select_sms_email = $('#id_sms_gateway' + (i+1)).selectize();
+			var selectize_gateway = $select_sms_email[0].selectize;
+			selectize_gateway.addItem(parseInt($existed_gateways[i]));
+			var $use = $('#id_for_sms_email'+(i+1)).iCheck({checkboxClass: 'icheckbox_minimal'});
+	        if ($existed_use[i]=='True'){
+				$use.iCheck('check');
+			}
+			$('[name=phone_number'+(i+1)+']').val($existed_phones[i]);
+        }
+        swipeCard();
+        function validateForm(){
+            if ('{{ user.profile.company.cccharge_type }}'=='DP'){
+                var without_errors = true;
+                if (!$('#id_address').val()){
+                    $('#id_address').parent().addClass('has-error');
+                    $('#id_address').tooltip('toggle');
+                    without_errors = false;
+                }
+                if (!$('#id_zip').val()){
+                    $('#id_zip').parent().addClass('has-error');
+                    $('#id_zip').attr("data-toggle", "tooltip");
+                    $('#id_zip').attr("title", "Required for DollarPhone");
+                    $('#id_zip').tooltip('toggle');
+                    without_errors = false;
+                }
+                if (!$('#id_city').val()){
+                    $('#id_city').parent().addClass('has-error');
+                    $('#id_city').attr("data-toggle", "tooltip");
+                    $('#id_city').attr("title", "Required for DollarPhone");
+                    $('#id_city').tooltip('toggle');
+                    without_errors = false;
+                }
+                if (!$('#id_state').val()){
+                    $('#id_state').parent().addClass('has-error');
+                    $('#id_state').attr("data-toggle", "tooltip");
+                    $('#id_state').attr("title", "Required for DollarPhone");
+                    $('#id_state').tooltip('toggle');
+                     without_errors = false;
+                }
+                if (!$('#id_cvv').val()){
+                    $('#id_cvv').parent().addClass('has-error');
+                    $('#id_cvv').tooltip('toggle');
+                     without_errors = false;
+                }
+                return without_errors;
+            }
+            return true;
+        }
+
+        $('.go-to-refill').on('click', function(){
+            if (!validateForm()){
+                //do nothing
+            }
+            else{
+                $('.go-to-refill').addClass('disabled');
+                $('.go-to-schedule').addClass('disabled');
+                $('.go-to-charge').addClass('disabled');
+                var phones = '';
+                var titles = '';
+                var sms_gateways = '';
+                var sms_email_use = '';
+                var n = $('.div_phone_number').length;
+                for (var i = 1; i <= n; i++){
+                    if (i==1){
+                        phones += $('[name=phone_number'+i+']').val();
+                        titles += $('[name=phone_title'+i+']').val();
+                        sms_gateways += $('[name=sms_gateway'+i+']').val();
+                        if ($('[name=for_sms_email'+i+']').prop('checked')){
+                            sms_email_use += 'True';
+                        }
+                        else{
+                            sms_email_use += 'False';
+                        }
+                    }
+                    else{
+                        phones += ',' + $('[name=phone_number'+i+']').val();
+                        titles += ',' + $('[name=phone_title'+i+']').val();
+                        sms_gateways += ',' + $('[name=sms_gateway'+i+']').val();
+                        if ($('[name=for_sms_email'+i+']').prop('checked')){
+                            sms_email_use += ',' + 'True';
+                        }
+                        else{
+                            sms_email_use += ',' + 'False';
+                        }
+                    }
+                }
+                $('#id_phone_numbers').val(phones);
+                $('#id_phone_titles').val(titles);
+                $('#id_phone_gateways').val(sms_gateways);
+                $('#id_phone_sms_emails').val(sms_email_use);
+                $('#customerForm').submit();
+            }
+        });
+        $('.go-to-schedule').on('click', function(){
+            if (!validateForm()){
+                //do nothing
+            }
+            else{
+                $('.go-to-refill').addClass('disabled');
+                $('.go-to-schedule').addClass('disabled');
+                $('.go-to-charge').addClass('disabled');
+                var phones = '';
+                var titles = '';
+                var sms_gateways = '';
+                var sms_email_use = '';
+                var n = $('.div_phone_number').length;
+                for (var i = 1; i <= n; i++){
+                    if (i==1){
+                        phones += $('[name=phone_number'+i+']').val();
+                        titles += $('[name=phone_title'+i+']').val();
+                        sms_gateways += $('[name=sms_gateway'+i+']').val();
+                        if ($('[name=for_sms_email'+i+']').prop('checked')){
+                            sms_email_use += 'True';
+                        }
+                        else{
+                            sms_email_use += 'False';
+                        }
+                    }
+                    else{
+                        phones += ',' + $('[name=phone_number'+i+']').val();
+                        titles += ',' + $('[name=phone_title'+i+']').val();
+                        sms_gateways += ',' + $('[name=sms_gateway'+i+']').val();
+                        if ($('[name=for_sms_email'+i+']').prop('checked')){
+                            sms_email_use += ',' + 'True';
+                        }
+                        else{
+                            sms_email_use += ',' + 'False';
+                        }
+                    }
+                }
+                $('#id_phone_numbers').val(phones);
+                $('#id_phone_titles').val(titles);
+                $('#id_phone_gateways').val(sms_gateways);
+                $('#id_phone_sms_emails').val(sms_email_use);
+                var action = $('#customerForm').attr('action');
+                $('#customerForm').attr('action', action+'?schedule=true');
+                $('#customerForm').submit();
+            }
+        });
+
+        {% if user.profile.company.cccharge_type != 'DP' %}
+        $('.go-to-charge').on('click', function(){
+            if (!validateForm()){
+                //do nothing
+            }
+            else{
+                $('.go-to-refill').addClass('disabled');
+                $('.go-to-schedule').addClass('disabled');
+                $('.go-to-charge').addClass('disabled');
+                var phones = '';
+                var titles = '';
+                var sms_gateways = '';
+                var sms_email_use = '';
+                var n = $('.div_phone_number').length;
+                for (var i = 1; i <= n; i++){
+                    if (i==1){
+                        phones += $('[name=phone_number'+i+']').val();
+                        titles += $('[name=phone_title'+i+']').val();
+                        sms_gateways += $('[name=sms_gateway'+i+']').val();
+                        if ($('[name=for_sms_email'+i+']').prop('checked')){
+                            sms_email_use += 'True';
+                        }
+                        else{
+                            sms_email_use += 'False';
+                        }
+                    }
+                    else{
+                        phones += ',' + $('[name=phone_number'+i+']').val();
+                        titles += ',' + $('[name=phone_title'+i+']').val();
+                        sms_gateways += ',' + $('[name=sms_gateway'+i+']').val();
+                        if ($('[name=for_sms_email'+i+']').prop('checked')){
+                            sms_email_use += ',' + 'True';
+                        }
+                        else{
+                            sms_email_use += ',' + 'False';
+                        }
+                    }
+                }
+                $('#id_phone_numbers').val(phones);
+                $('#id_phone_titles').val(titles);
+                $('#id_phone_gateways').val(sms_gateways);
+                $('#id_phone_sms_emails').val(sms_email_use);
+                var action = $('#customerForm').attr('action');
+                $('#customerForm').attr('action', action+'?with_charge=true');
+                $('#customerForm').submit();
+            }
+        });
+        {% endif %}
+
+        if(getUrlParameter('phone')){
+            $('#id_phone_number1').val(getUrlParameter('phone'));
+            $('.new-customer-number').text(getUrlParameter('phone'));
+        }
+        else{
+            $('#phone_numbers').val('{{ number }}');
+            $('.new-customer-number').text('{{ number }}');
+        }
+        $('.tooltip-activate').tooltip();
+        $('#__customers').addClass("active");
+		$('textarea.expand').focus(function () {
+            $(this).animate({ height: "8em" }, 500);
+        });
+
+        originalForm = $('form').serialize();
+        $('#id_card_number').on('input', function(e) {
+             $(this).val($(this).val().replace(/\ /g, '').replace(/\-/g, ''));
+        });
+        if ($('#id_exist_card_number').val()) {
+            $('#id_exist_card_type').text(card_types[$('#id_exist_card_number').val()[0]]['type']);
+        }
+        $("#id_card_number").bind('input propertychange',function(){
+            var card_number = $('#id_card_number').val();
+            creditCardValidator(card_number)
+        });
+
+        $('.swipe-card-form-group').show();
+
+        if (!$('.credit_card').length) {
+            $(".credit_card_number").show();
+            $("#card_number_update").val('True');
+        }
+        else {
+            $('.credit_card').show();
+        }
+        if (!$('.card_date').length) {
+            $(".credit_card_date").show();
+            $("#id_card_date_update").val('True');
+        }
+        else {
+            $('.card_date').show();
+        }
+    });
+
+    function creditCardValidator(card_number) {
+        if (card_number.length > 0) {
+            $('#card_type').text(card_types[card_number[0]]['type']);
+            if (card_types[card_number[0]]['card_length'] != card_number.length) {
+                $('#card_number_block').removeClass('has-success').addClass('has-error');
+                $('#help_card_number').text('Number should contains ' + card_types[card_number[0]]['card_length'] + ' digits')
+            }
+            else {
+                $('#card_number_block').removeClass('has-error').addClass('has-success');
+                $('#help_card_number').text('')
+            }
+        }
+        else {
+            $('#card_number_block').removeClass('has-success').removeClass('has-error');
+            $('#card_type').text('');
+            $('#help_card_number').text('')
+        }
+    }
+
+    function updateCard() {
+        $('.credit_card').remove();
+        $(".credit_card_number").show();
+        $("#card_number_update").val('True');
+    }
+    function updateCardDate() {
+        $('.card_date').remove();
+        $(".credit_card_date").show();
+        $("#id_card_date_update").val('True');
+    }
+
+    {% if user.profile.company.can_swipe_card_in_search %}
+    //swipe card feature
+    var swipe_card_activated = false;
+
+    function swipeCard(){
+        updateCard();
+        updateCardDate();
+        swipe_card_activated = true;
+        $('#swipe-card-data').focus();
+        $('.swipe-card').text('Please, swipe card...');
+    }
+
+    $('#swipe-card-data').on('input', function(){
+        if (swipe_card_activated){
+            $('#id_card_number').val($('#swipe-card-data').val().match("\\%B(.*?)\\^")[1]);
+            var first_name = $('#swipe-card-data').val().match("/(.*?)\\^")[1];
+            $('#id_first_name').val(first_name.substr(0,1).toUpperCase() + first_name.substr(1).toLowerCase());
+            $('#id_cc_first_name').val(first_name.substr(0,1).toUpperCase() + first_name.substr(1).toLowerCase());
+            var last_name = $('#swipe-card-data').val().match("\\^(.*?)/")[1];
+            $('#id_last_name').val(last_name.substr(0,1).toUpperCase() + last_name.substr(1).toLowerCase());
+            $('#id_cc_last_name').val(last_name.substr(0,1).toUpperCase() + last_name.substr(1).toLowerCase());
+            var month = $('#swipe-card-data').val().match("=(.*?)\\?")[1].substring(2, 4);
+            if (month[0] == '0'){
+                month = month[1];
+            }
+            var year = $('#swipe-card-data').val().match("=(.*?)\\?")[1].substring(0, 2);
+            $('#id_expiration_month').val(month).change();
+            $('#id_expiration_year').val('20'+year).change();
+            $('.swipe-card').text('Swipe Credit Card');
+            swipe_card_activated = false;
+            $('#id_cvv').tooltip('toggle');
+        }
+    });
+
+    $('#swipe-card-data').on("focusout", function(){
+        if (swipe_card_activated){
+            $('.swipe-card').text('Swipe Credit Card');
+            swipe_card_activated = false;
+        }
+    });
+    /////////////////
+    {% endif %}
+
+    function saveCustomer(redirectUrl) {
+        var currentForm = $('form').serialize();
+        if(originalForm != currentForm){
+            if (validateForm()) {
+                var r = confirm("Some data were changed. Save changes?");
+                if (r == true) {
+                    $.ajax({
+                        type: "POST",
+                        url: $('#customerForm').attr("action"),
+                        data: $('#customerForm').serialize(),
+                        success: function (data) {
+							data = JSON.parse(data);
+							if(data['status']=='error')	{
+								$('#id_errors').empty().addClass('alert alert-danger');
+								var errors = data['errors'];
+								for(var key in errors){
+									if(errors.hasOwnProperty(key)) {
+										for(var error in data['errors'][key]){
+											$('#id_errors').html($('#id_errors').html() + data['errors'][key][error] + "</br>");
+										}
+									}
+								}
+								$("html, body").animate({ scrollTop: 0 }, "slow");
+							}
+							else{
+								if (window.location.href.indexOf("create")>=0)
+									window.location.href = redirectUrl +  data['id'];
+								else window.location.href = redirectUrl;
+							}
+                        },
+                        dataType: "html"
+                    });
+                    return false;
+                }
+                else {
+                    if (window.location.href.indexOf("create")>=0){
+                        alert("You have to save a new customer before schedule refill or recharge now");
+                        return false;
+                    }
+                    window.location.href = redirectUrl;
+                }
+            }
+            return false;
+        }
+        else {
+                window.location.href = redirectUrl;
+            }
+        return false;
+    }
+</script>
+{% endblock %}

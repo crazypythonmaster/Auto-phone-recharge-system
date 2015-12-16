@@ -1,0 +1,57 @@
+{% extends 'core/base.html' %}
+
+{% block content %}
+<section class="content-header" xmlns="http://www.w3.org/1999/html" xmlns="http://www.w3.org/1999/html"
+         xmlns="http://www.w3.org/1999/html">
+    <h1>
+        EZ Cloud News Emails
+    </h1>
+    <ol class="breadcrumb">
+        <li><a href="{% url 'home' %}"><i class="fa fa-dashboard"></i> Home</a></li>
+        <li class='active'>EZ Cloud News Emails</li>
+    </ol>
+</section>
+<section class="content">
+    <form class="form-horizontal ez-news-emails-form" role="form" method="post" action="." id="main">
+        {% csrf_token %}
+        <div class="form-group" id="div_ez_news_emails_change">
+            <label for="id_update_email" class="col-sm-2 control-label">Email list</label>
+            <div class="col-sm-4">
+                <textarea id="id_ez_news_emails_change" name="update_emails" class="form-control" }}"></textarea>
+                <span class="help-block" id="help_update_email">Enter here comma separated list of emails. We will send all EZ Cloud news on this emails.</span>
+            </div>
+        </div>
+        <div class="box-footer">
+            <div class="col-sm-offset-2">
+                <button type="button" onclick="ez_news_emails_change()" class="btn btn-primary">Save</button>
+                <span id="saved" class="label label-success" style="display: none">Saved</span>
+            </div>
+        </div>
+    </form>
+</section>
+{% endblock %}
+{% block body_js %}
+    <script type="text/javascript">
+        $(document).ready(function(){
+            $('#id_ez_news_emails_change').val('{{ ez_news_emails }}');
+        });
+        function ez_news_emails_change(){
+            $.ajax({
+                type : "GET",
+                url : "/change_ez_email_list/",
+                data: { news_emails: $('#id_ez_news_emails_change').val() },
+                dataType: "json",
+                success: function(result) {
+                    if(result['valid']){
+                        $('#div_ez_news_emails_change').removeClass('has-error');
+                        $('#saved').show();
+                        $('#saved').delay(1500).fadeOut('slow');
+                    }
+                    else{
+                        $('#div_ez_news_emails_change').addClass('has-error');
+                    }
+                }
+            });
+        }
+    </script>
+{% endblock %}

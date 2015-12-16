@@ -1,0 +1,22 @@
+{% extends 'core/base.html' %}
+{% load tz %}
+{% block content %}
+    <section class="content-header">
+        <h1>
+            [{{ object.get_category_display }}] {{ object.title }}
+        </h1>
+        <ol class="breadcrumb">
+            <li><a href="{% url 'home' %}"><i class="fa fa-dashboard"></i> Home</a></li>
+
+        </ol>
+    </section>
+    <section class="content">
+        <div class="box">
+            {{ object.message | safe }}
+        </div>
+        <div class="box-footer">
+            {{ object.created }}
+        </div>
+	</section>
+</div>
+{% endblock %}
