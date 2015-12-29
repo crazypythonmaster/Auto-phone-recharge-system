@@ -11,6 +11,8 @@ from ppars.apps.charge.views import ChargeList, ChargeDetail, ajax_charge_steps,
 from ppars.apps.core import views
 from ppars.apps.notification.views import ez_cloud_news_emails, change_ez_email_list
 from ppars.apps.api import views as api
+
+
 from ppars.apps.search.views import ajax_search, search, ajax_search_dropdown
 # Uncomment the next two lines to enable the admin:
 from django.contrib import admin
@@ -52,6 +54,8 @@ urlpatterns = patterns('',
     url(r'^ajax_search/$', login_required(ajax_search), name="ajax_search"),
     url(r'^ajax_search_dropdown/$', login_required(ajax_search_dropdown), name="ajax_search_dropdown"),
     url(r'^ajax_refill_as_walk_in/$', login_required(views.ajax_refill_as_walk_in), name="ajax_refill_as_walk_in"),
+    
+    
 
     url(r'^customer$', login_required(views.CustomerList.as_view()), name="customer_list"),
     url(r'^customer/create/$', login_required(views.CustomerCreate.as_view()), name='customer_create'),
